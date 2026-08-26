@@ -72,7 +72,35 @@ h1 {
 
 .sizes img {
   display: block;
-  background: #fff;
+  background: #f5e6e0;
   border: 1px solid #d9d3c6;
   padding: 0.4rem;
+}
+
+.mark-sangmo {
+  background: #f5e6e0;
+  border-color: #c9b4ae;
+}
+
+.prior {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #d9d3c6;
+}
+
+.prior h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.prior p {
+  margin: 0 0 1rem;
+  color: #3d3a34;
+}
+
+.swim {
+  display: block;
+  background: #fff;
+  border: 1px solid #d9d3c6;
+  padding: 0.5rem;
 }
