@@ -1,4 +1,4 @@
-import type { Vec } from "./play";
+import { clamp, type Vec } from "./play";
 
 export type JegiState = {
   pos: Vec;
@@ -10,7 +10,6 @@ export type JegiState = {
 function integrate(s: JegiState, dt: number, size: { w: number; h: number }) {
   s.pos.x += s.vel.x * dt;
   s.pos.y += s.vel.y * dt;
-  s.spin += s.vel.x * 0.04 * dt + s.vel.y * 0.01 * dt;
   s.phase += dt * (6 + Math.hypot(s.vel.x, s.vel.y) * 0.008);
 
   const pad = 18;
@@ -23,26 +22,34 @@ function integrate(s: JegiState, dt: number, size: { w: number; h: number }) {
   }
 }
 
+/** The weighted coin rights itself under the tassels instead of tumbling. */
+function settleUpright(s: JegiState, dt: number, rate: number) {
+  const lean = clamp(s.vel.x * 0.0012, -0.35, 0.35);
+  s.spin += (lean - s.spin) * Math.min(1, rate * dt);
+}
+
 /** Stay in the air while idle. */
 export function hoverJegi(s: JegiState, size: { w: number; h: number }, dt: number) {
   s.vel.x *= Math.pow(0.06, dt);
   s.vel.y *= Math.pow(0.06, dt);
+  settleUpright(s, dt, 6);
   integrate(s, dt, size);
 }
 
-/** Gravity. */
+/** Ballistic flight: gravity and drag only — the pointer has no pull here. */
 export function stepJegi(s: JegiState, size: { w: number; h: number }, dt: number) {
   s.vel.y += 980 * dt;
   s.vel.x *= Math.pow(0.55, dt);
   s.vel.y *= Math.pow(0.92, dt);
+  settleUpright(s, dt, s.vel.y > 0 ? 9 : 4);
   integrate(s, dt, size);
 }
 
-export function kickJegi(s: JegiState, from: Vec, aimX: number, power: number) {
-  const dirX = Math.max(-1, Math.min(1, (aimX - from.x) / 220));
-  s.vel.x = dirX * (180 + power * 0.9);
-  s.vel.y = -(520 + power * 1.6);
-  s.spin += dirX * 4;
+/** Launch off the foot toward wherever `aim` sits at this instant. */
+export function kickJegi(s: JegiState, from: Vec, aim: Vec) {
+  s.vel.x = clamp((aim.x - from.x) * 2.0, -380, 380);
+  s.vel.y = -clamp((from.y - aim.y) * 2.2, 560, 900);
+  s.spin = clamp(s.vel.x * 0.002, -0.4, 0.4);
 }
 
 export function jegiFallen(s: JegiState, size: { h: number }) {
@@ -65,13 +72,15 @@ export function drawJegi(ctx: CanvasRenderingContext2D, s: JegiState, color: str
   ctx.ellipse(0, 0, w, w * 0.48, 0, 0, Math.PI * 2);
   ctx.stroke();
 
-  const trail = Math.atan2(s.vel.y, s.vel.x) + Math.PI;
+  // Tassels trail opposite the motion; the upward bias keeps them above the
+  // coin once the jegi slows or falls.
+  const trail = Math.atan2(-s.vel.y - 140, -s.vel.x);
   for (let i = -2; i <= 2; i++) {
-    const spread = i * 0.28;
-    const wave = Math.sin(s.phase + i) * 2.2 * scale;
+    const ang = trail + i * 0.28;
+    const len = fan + Math.sin(s.phase + i) * 2.2 * scale;
     ctx.beginPath();
     ctx.moveTo(i * 1.4 * scale, -w * 0.2);
-    ctx.lineTo(Math.cos(trail + spread) * (fan + wave) + i * 2 * scale, -fan + Math.sin(trail + spread) * 4 * scale);
+    ctx.lineTo(Math.cos(ang) * len + i * 2 * scale, Math.sin(ang) * len - w * 0.2);
     ctx.stroke();
   }
 

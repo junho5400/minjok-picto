@@ -1,4 +1,4 @@
-import { clamp, readAnchor, resizeCanvas, type Vec } from "./play";
+import { readAnchor, resizeCanvas, type Vec } from "./play";
 import { applyJegiPose, JEGI_FRAMES, type JegiRig } from "./jegi-frames";
 import {
   drawJegi,
@@ -11,6 +11,7 @@ import {
 
 const INK = "#212121";
 const KICK_SPEED = 12;
+const CONTACT_R = 26;
 
 export function startJegi(root: HTMLElement) {
   const stage = root.querySelector<HTMLElement>(".pictogram")!;
@@ -42,12 +43,8 @@ export function startJegi(root: HTMLElement) {
   let kicking = false;
   let kickPhase = 0;
   let frameIndex = 0;
-  let hit = false;
   let hasPointer = false;
-  let held = false;
-  let dropped = false;
-  let lastPointerX = 0;
-  let sweep = 0;
+  let engaged = false;
   let placed = false;
   let visible = false;
   let last = performance.now();
@@ -61,12 +58,10 @@ export function startJegi(root: HTMLElement) {
   };
 
   function resetJegi() {
-    jegi.pos.x = foot.x + 16;
-    jegi.pos.y = foot.y - 36;
+    jegi.pos.x = foot.x + 12 * size.scale;
+    jegi.pos.y = foot.y - 90 * size.scale;
     jegi.vel.x = 0;
     jegi.vel.y = 0;
-    held = false;
-    dropped = false;
   }
 
   function cachePeak() {
@@ -91,29 +86,14 @@ export function startJegi(root: HTMLElement) {
     }
   }
 
-  function nearKickingFoot() {
-    const r = 110;
-    return (
-      Math.hypot(jegi.pos.x - foot.x, jegi.pos.y - foot.y) < r ||
-      Math.hypot(jegi.pos.x - peak.x, jegi.pos.y - peak.y) < r
-    );
-  }
-
-  function aimKickX() {
-    return hasPointer ? pointer.x : peak.x;
-  }
-
   function strike() {
-    if (hit) return;
-    kickJegi(jegi, foot, aimKickX(), 70 + Math.abs(sweep));
-    hit = true;
+    kickJegi(jegi, foot, hasPointer ? pointer : peak);
   }
 
   function startKick() {
     if (kicking) return;
     kicking = true;
     kickPhase = 0;
-    hit = false;
   }
 
   function paintJegi() {
@@ -134,18 +114,10 @@ export function startJegi(root: HTMLElement) {
     }
 
     const playR = Math.min(size.w, size.h) * 0.48;
-    const dist = hasPointer
-      ? Math.hypot(pointer.x - playOrigin.x, pointer.y - playOrigin.y)
-      : Infinity;
-    const inPlay = hasPointer && dist < playR;
-
-    if (inPlay) {
-      held = true;
-      dropped = false;
-    } else if (held) {
-      held = false;
-      dropped = true;
-    }
+    const inPlay =
+      hasPointer &&
+      Math.hypot(pointer.x - playOrigin.x, pointer.y - playOrigin.y) < playR;
+    if (inPlay) engaged = true;
 
     if (kicking) {
       kickPhase += KICK_SPEED * dt;
@@ -162,31 +134,30 @@ export function startJegi(root: HTMLElement) {
     applyJegiPose(rig, JEGI_FRAMES[frameIndex]);
     foot = readAnchor(stage, kickMark);
 
-    if (hit && jegi.vel.y < -40) hit = false;
-
-    if (inPlay && nearKickingFoot()) {
-      const incoming = jegi.vel.y > 16;
-      const resting = Math.abs(jegi.vel.y) < 14 && Math.abs(jegi.vel.x) < 80;
-      if ((incoming || resting) && !hit) {
-        kicking = true;
-        kickPhase = 0;
-        frameIndex = 0;
-        applyJegiPose(rig, JEGI_FRAMES[0]);
-        foot = readAnchor(stage, kickMark);
-        strike();
-      }
+    // Rebound only on real contact: the falling coin has to reach the resting
+    // foot. While the kick animation swings, contact stays off so one kick
+    // cannot tap the jegi twice.
+    if (
+      engaged &&
+      !kicking &&
+      jegi.vel.y > 0 &&
+      Math.hypot(jegi.pos.x - foot.x, jegi.pos.y - foot.y) < CONTACT_R * size.scale
+    ) {
+      kicking = true;
+      kickPhase = 0;
+      strike();
     }
 
-    if (!kicking && Math.abs(sweep) > (held ? 90 : 140)) startKick();
-
-    if (held || dropped) {
+    if (engaged) {
       stepJegi(jegi, size, dt);
     } else {
       hoverJegi(jegi, size, dt);
     }
 
-    if (jegiFallen(jegi, size)) resetJegi();
-    sweep *= 0.88;
+    if (jegiFallen(jegi, size)) {
+      resetJegi();
+      engaged = inPlay;
+    }
 
     paintJegi();
   }
@@ -194,14 +165,8 @@ export function startJegi(root: HTMLElement) {
   function movePointer(x: number, y: number) {
     if (!visible) return;
     const rect = stage.getBoundingClientRect();
-    const nextX = x - rect.left;
-    const nextY = y - rect.top;
-    if (hasPointer) {
-      sweep = clamp(sweep + (nextX - lastPointerX) * 2, -280, 280);
-    }
-    pointer.x = nextX;
-    pointer.y = nextY;
-    lastPointerX = nextX;
+    pointer.x = x - rect.left;
+    pointer.y = y - rect.top;
     hasPointer = true;
   }
 
@@ -211,9 +176,7 @@ export function startJegi(root: HTMLElement) {
     if (visible) startKick();
   });
   window.addEventListener("pointerleave", () => {
-    if (held) dropped = true;
     hasPointer = false;
-    held = false;
   });
 
   const ro = new ResizeObserver(() => measure());
