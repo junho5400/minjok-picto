@@ -1,169 +1,233 @@
-import { drawSangmo, type SangmoState, type Vec } from "./sangmo";
-import { applyPose, FRAMES, type Rig } from "./frames";
+import { startSangmo } from "./sangmo-loop";
+import { startYeon } from "./yeon-loop";
+import { startJegi } from "./jegi-loop";
 
-const stage = document.querySelector<HTMLElement>(".stage")!;
-const canvas = document.querySelector<HTMLCanvasElement>("#ribbon-layer")!;
-const anchorMark = document.querySelector<SVGCircleElement>("#hat-anchor")!;
-const hint = document.querySelector<HTMLElement>(".hint")!;
-const cursor = document.querySelector<HTMLElement>(".cursor-ring")!;
+const SCENES = [
+  { id: "intro", bg: "#ffffff", ink: "dark" },
+  { id: "sangmo", bg: "#ce2f3a", ink: "light" },
+  { id: "kite", bg: "#0048a0", ink: "light" },
+  { id: "jegi", bg: "#ffffff", ink: "dark" },
+] as const;
 
-const rig: Rig = {
-  body: document.querySelector<SVGGElement>("#body")!,
-  head: document.querySelector<SVGGElement>("#head")!,
-  leftArm: document.querySelector<SVGGElement>("#left-arm")!,
-  rightArm: document.querySelector<SVGGElement>("#right-arm")!,
-  legs: document.querySelector<SVGGElement>("#legs")!,
-  foot: document.querySelector<SVGGElement>("#foot")!,
-};
-
-const WHITE = "#ffffff";
-const BASE_SPIN = 5.6;
-const MAX_SPIN = 15;
-/** Dance cels per full turn of the ribbon. */
-const FRAMES_PER_TURN = 8;
-
-const ctx = canvas.getContext("2d");
+const LAST = SCENES.length - 1;
+const HOLD = 0.22;
+const INTRO_SIZE = 300;
+const FOOTER_SIZE = 24;
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
+const stage = document.querySelector<HTMLElement>("#stage")!;
+const scrollRoot = document.querySelector<HTMLElement>("#scroll-root")!;
+const bgCurrent = document.querySelector<HTMLElement>("#bg-current")!;
+const bgNext = document.querySelector<HTMLElement>("#bg-next")!;
+const hint = document.querySelector<HTMLElement>("#scroll-hint")!;
+const pager = document.querySelector<HTMLElement>("#pager")!;
+const taegeuk = document.querySelector<HTMLElement>("#taegeuk")!;
+const taegeukColor = document.querySelector<HTMLElement>(".taegeuk-color")!;
+const taegeukLight = document.querySelector<HTMLElement>(".taegeuk-light")!;
+const slots = [...pager.querySelectorAll<HTMLButtonElement>(".slot")];
+const scenes = [...document.querySelectorAll<HTMLElement>(".scene")];
+const sangmoScene = document.querySelector<HTMLElement>('[data-scene="sangmo"]')!;
+const kiteScene = document.querySelector<HTMLElement>('[data-scene="kite"]')!;
+const jegiScene = document.querySelector<HTMLElement>('[data-scene="jegi"]')!;
+const sangmo = startSangmo(sangmoScene);
+const yeon = startYeon(kiteScene);
+const jegi = startJegi(jegiScene);
 
-if (!ctx) {
-  document.body.classList.add("is-static");
-  hint.textContent = "This browser cannot draw the ribbon, so the dancer is shown still.";
-  applyPose(rig, FRAMES[2]);
-} else {
-  run(ctx);
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => sangmo.stop?.());
 }
 
-function run(ctx: CanvasRenderingContext2D) {
-  const pointer: Vec = { x: 0, y: 0 };
-  let size = { w: 0, h: 0, scale: 1 };
-  let anchor: Vec = { x: 0, y: 0 };
-  let spin = BASE_SPIN;
-  let framePhase = 0;
-  let frameIndex = -1;
-  let lastPointerX = 0;
-  let sweep = 0;
-  let hasPointer = false;
-  let last = performance.now();
+const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const easeInOut = (t: number) => t * t * (3 - 2 * t);
 
-  const state: SangmoState = {
-    anchor,
-    phase: 0,
-    radius: 0,
-    tilt: 0.34,
-    lift: 0,
-    lean: 0,
+function sceneHeight() {
+  return window.innerHeight * 1.45;
+}
+
+function layout() {
+  scrollRoot.style.height = `${LAST * sceneHeight() + window.innerHeight}px`;
+}
+
+function maxScroll() {
+  return Math.max(scrollRoot.offsetHeight - window.innerHeight, 1);
+}
+
+function readProgress() {
+  const raw = clamp(window.scrollY / sceneHeight(), 0, LAST);
+  const index = Math.min(Math.floor(raw + 1e-6), LAST);
+  const local = clamp(raw - index, 0, 1);
+  if (index >= LAST) return { index: LAST, wipe: 0, raw };
+  const hold = index === 0 ? 0.12 : HOLD;
+  const wipe = local <= hold ? 0 : easeInOut((local - hold) / (1 - hold));
+  return { index, wipe, raw };
+}
+
+function targetScroll(sceneIndex: number) {
+  return clamp(sceneIndex * sceneHeight(), 0, maxScroll());
+}
+
+function paint() {
+  const { index, wipe } = readProgress();
+  const current = SCENES[index];
+  const next = SCENES[Math.min(index + 1, LAST)];
+  const wiping = wipe > 0 && index < LAST;
+
+  bgCurrent.style.background = current.bg;
+  bgNext.style.background = next.bg;
+  const nextY = !wiping ? 100 : reduceMotion ? (wipe > 0.5 ? 0 : 100) : (1 - wipe) * 100;
+  bgNext.style.transform = `translate3d(0, ${nextY}%, 0)`;
+
+  const currentClip = wiping ? `inset(0 0 ${wipe * 100}% 0)` : "inset(0)";
+  const nextClip = wiping ? `inset(${(1 - wipe) * 100}% 0 0 0)` : "inset(100% 0 0 0)";
+
+  for (const el of scenes) {
+    const i = SCENES.findIndex((s) => s.id === el.dataset.scene);
+    const shift = el.querySelector<HTMLElement>(".scene-shift");
+    el.classList.toggle("is-idle", i !== index && i !== index + 1);
+    if (i === index) {
+      el.style.clipPath = reduceMotion ? "inset(0)" : currentClip;
+      el.style.zIndex = "3";
+      if (shift) {
+        shift.style.transform = reduceMotion ? "none" : `translate3d(0, ${wipe * 18}vh, 0)`;
+      }
+    } else if (i === index + 1 && wiping) {
+      el.style.clipPath = reduceMotion ? (wipe > 0.5 ? "inset(0)" : "inset(100% 0 0 0)") : nextClip;
+      el.style.zIndex = "4";
+      if (shift) {
+        shift.style.transform = reduceMotion ? "none" : `translate3d(0, ${(1 - wipe) * -6}vh, 0)`;
+      }
+    } else {
+      el.style.clipPath = "inset(100% 0 0 0)";
+      el.style.zIndex = "2";
+      if (shift) shift.style.transform = "none";
+    }
+  }
+
+  const pagerScene = wiping && wipe > 0.08 ? next : current;
+  pager.classList.toggle("is-dark", pagerScene.ink === "dark");
+  pager.classList.toggle("is-light", pagerScene.ink === "light");
+
+  const introT = index === 0 ? wipe : 1;
+  const pagerT = easeInOut(clamp((introT - 0.35) / 0.65, 0, 1));
+  pager.style.opacity = String(pagerT);
+  pager.style.pointerEvents = pagerT > 0.6 ? "auto" : "none";
+  hint.style.opacity = String((1 - introT) * 0.45);
+
+  const contentIndex = wiping ? (wipe > 0.5 ? index + 1 : index) : index;
+  const activeSlot = clamp(contentIndex - 1, 0, 2);
+  slots.forEach((slot, i) => {
+    slot.classList.toggle("is-active", i === activeSlot && introT > 0.55);
+    slot.setAttribute("aria-current", i === activeSlot && introT > 0.55 ? "true" : "false");
+  });
+
+  placeTaegeuk(index, wipe, introT);
+
+  const sangmoOn = index === 1 || (index === 0 && wiping);
+  const yeonOn = index === 2 || (index === 1 && wiping);
+  const jegiOn = index === 3 || (index === 2 && wiping);
+  sangmo.setVisible(sangmoOn);
+  yeon.setVisible(yeonOn);
+  jegi.setVisible(jegiOn);
+  if (sangmoOn) sangmo.measure();
+  if (yeonOn) yeon.measure();
+  if (jegiOn) jegi.measure();
+}
+
+function placeTaegeuk(index: number, wipe: number, introT: number) {
+  const stageBox = stage.getBoundingClientRect();
+  const start = {
+    x: stageBox.width / 2,
+    y: stageBox.height / 2,
+    size: Math.min(INTRO_SIZE, stageBox.width * 0.42, stageBox.height * 0.42),
   };
 
-  function measure() {
-    const rect = stage.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round(rect.height * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    size = {
-      w: rect.width,
-      h: rect.height,
-      scale: clamp(Math.min(rect.width, rect.height) / 520, 0.55, 2),
-    };
-    readAnchor();
-    if (!hasPointer) {
-      pointer.x = anchor.x + size.w * 0.2;
-      pointer.y = anchor.y - size.h * 0.12;
-      lastPointerX = pointer.x;
-    }
-    state.radius = defaultRadius();
-    state.lift = defaultLift();
-  }
+  const fromSlot = clamp(index - 1, 0, 2);
+  const toSlot = clamp((index < LAST ? index + 1 : index) - 1, 0, 2);
+  const fromBox = slots[fromSlot].getBoundingClientRect();
+  const toBox = slots[toSlot].getBoundingClientRect();
+  const slotT = index === 0 ? 0 : wipe;
+  const land = {
+    x: lerp(fromBox.left + fromBox.width / 2, toBox.left + toBox.width / 2, slotT) - stageBox.left,
+    y: lerp(fromBox.top + fromBox.height / 2, toBox.top + toBox.height / 2, slotT) - stageBox.top,
+    size: FOOTER_SIZE,
+  };
 
-  function readAnchor() {
-    const rect = stage.getBoundingClientRect();
-    const mark = anchorMark.getBoundingClientRect();
-    anchor = {
-      x: mark.left + mark.width / 2 - rect.left,
-      y: mark.top + mark.height / 2 - rect.top,
-    };
-    state.anchor = anchor;
-  }
+  const t = index === 0 ? introT : 1;
+  const x = lerp(start.x, land.x, t);
+  const y = lerp(start.y, land.y, t);
+  const size = lerp(start.size, land.size, t);
+  taegeuk.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) scale(${size / INTRO_SIZE})`;
 
-  const defaultRadius = () => Math.min(size.w, size.h) * 0.26;
-  const defaultLift = () => Math.min(size.w, size.h) * 0.12;
-
-  function frame(now: number) {
-    const dt = Math.min((now - last) / 1000, 0.05);
-    last = now;
-
-    readAnchor();
-
-    const reach = hasPointer
-      ? clamp(Math.hypot(pointer.x - anchor.x, pointer.y - anchor.y) * 0.75, size.w * 0.08, size.w * 0.42)
-      : defaultRadius();
-    const wantLift = hasPointer
-      ? clamp((anchor.y - pointer.y) * 0.45 + defaultLift() * 0.5, size.h * 0.02, size.h * 0.3)
-      : defaultLift();
-    const wantLean = hasPointer ? (pointer.x - anchor.x) * 0.18 : 0;
-
-    state.radius += (reach - state.radius) * 0.06;
-    state.lift += (wantLift - state.lift) * 0.06;
-    state.lean += (wantLean - state.lean) * 0.06;
-    state.tilt += (clamp(0.24 + state.lift / Math.max(size.h, 1) * 0.9, 0.2, 0.52) - state.tilt) * 0.06;
-
-    const wantSpin = clamp(
-      Math.sign(sweep || 1) * (BASE_SPIN + Math.abs(sweep) * 0.05),
-      -MAX_SPIN,
-      MAX_SPIN,
-    );
-    spin += (wantSpin - spin) * 0.04;
-    sweep *= 0.9;
-
-    state.phase += spin * dt;
-    framePhase += (Math.abs(spin) / (Math.PI * 2)) * FRAMES_PER_TURN * dt;
-
-    const next = Math.floor(framePhase) % FRAMES.length;
-    if (next !== frameIndex) {
-      frameIndex = next;
-      applyPose(rig, FRAMES[next]);
-    }
-
-    ctx.clearRect(0, 0, size.w, size.h);
-    drawSangmo(ctx, state, WHITE, size.scale);
-
-    requestAnimationFrame(frame);
-  }
-
-  function movePointer(x: number, y: number) {
-    const rect = stage.getBoundingClientRect();
-    pointer.x = x - rect.left;
-    pointer.y = y - rect.top;
-    sweep = clamp(sweep + (pointer.x - lastPointerX) * 2, -260, 260);
-    lastPointerX = pointer.x;
-    if (!hasPointer) {
-      hasPointer = true;
-      document.body.classList.add("is-engaged");
-    }
-    cursor.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-  }
-
-  measure();
-  window.addEventListener("resize", measure);
-  window.addEventListener("pointermove", (e) => movePointer(e.clientX, e.clientY), { passive: true });
-  window.addEventListener("pointerdown", (e) => movePointer(e.clientX, e.clientY), { passive: true });
-
-  if (reduceMotion) {
-    document.body.classList.add("is-static");
-    hint.textContent = "Motion is reduced in your system settings, so the spin is held still.";
-    applyPose(rig, FRAMES[2]);
-    const paint = () => {
-      measure();
-      readAnchor();
-      state.phase = Math.PI * 0.35;
-      ctx.clearRect(0, 0, size.w, size.h);
-      drawSangmo(ctx, state, WHITE, size.scale);
-    };
-    paint();
-    window.addEventListener("resize", paint);
-  } else {
-    requestAnimationFrame(frame);
-  }
+  let light = 0;
+  if (index === 0) light = introT;
+  else if (index === 1) light = 1;
+  else if (index === 2) light = 1 - wipe;
+  else light = 0;
+  taegeukColor.style.opacity = String(1 - light);
+  taegeukLight.style.opacity = String(light);
 }
+
+function goTo(sceneIndex: number) {
+  window.scrollTo({
+    top: targetScroll(sceneIndex),
+    behavior: reduceMotion ? "auto" : "smooth",
+  });
+}
+
+for (const slot of slots) {
+  slot.addEventListener("click", () => goTo(Number(slot.dataset.target)));
+}
+
+taegeuk.style.pointerEvents = "auto";
+taegeuk.style.cursor = "pointer";
+taegeuk.addEventListener("click", () => {
+  const { index, wipe } = readProgress();
+  goTo(index === 0 && wipe < 0.2 ? 1 : 0);
+});
+taegeuk.setAttribute("role", "button");
+taegeuk.setAttribute("aria-label", "처음으로");
+taegeuk.tabIndex = 0;
+taegeuk.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    goTo(0);
+  }
+});
+
+window.addEventListener(
+  "keydown",
+  (e) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "PageDown" && e.key !== "PageUp" && e.key !== "Home" && e.key !== "End") {
+      return;
+    }
+    const { index, wipe } = readProgress();
+    const at = wipe > 0.55 ? index + 1 : index;
+    if (e.key === "Home") goTo(0);
+    else if (e.key === "End") goTo(LAST);
+    else if (e.key === "ArrowDown" || e.key === "PageDown") goTo(Math.min(at + 1, LAST));
+    else goTo(Math.max(at - 1, 0));
+    e.preventDefault();
+  },
+);
+
+let ticking = false;
+const onScroll = () => {
+  if (ticking) return;
+  ticking = true;
+  requestAnimationFrame(() => {
+    paint();
+    ticking = false;
+  });
+};
+
+window.addEventListener("scroll", onScroll, { passive: true });
+window.addEventListener("resize", () => {
+  layout();
+  paint();
+  sangmo.measure();
+  yeon.measure();
+  jegi.measure();
+});
+layout();
+paint();
