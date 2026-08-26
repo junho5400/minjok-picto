@@ -1,8 +1,8 @@
-import { WHITE, clamp, readAnchor, resizeCanvas, type Vec } from "./play";
-import { ARM_REST_DEG, applyYeonPose, YEON_FRAMES, type YeonRig } from "./yeon-frames";
-import { drawKite, idleKiteTarget, kiteSpeed, steerKite, stringAngleDeg, type KiteState } from "./yeon";
+import { WHITE, readAnchor, resizeCanvas, type Vec } from "./play";
+import { applyYeonPose, YEON_FRAMES, type YeonRig } from "./yeon-frames";
+import { drawKite, idleKiteTarget, steerKite, type KiteState } from "./yeon";
 
-const FRAMES_PER_TURN = 8;
+const REST_POSE = YEON_FRAMES[0];
 
 export function startYeon(root: HTMLElement) {
   const stage = root.querySelector<HTMLElement>(".pictogram")!;
@@ -20,15 +20,13 @@ export function startYeon(root: HTMLElement) {
   };
 
   if (!ctx) {
-    applyYeonPose(rig, YEON_FRAMES[2], 0);
+    applyYeonPose(rig, REST_POSE, 0);
     return { setVisible() {}, measure() {}, stop() {} };
   }
 
   const pointer: Vec = { x: 0, y: 0 };
   let size = { w: 0, h: 0, scale: 1 };
   let reel: Vec = { x: 0, y: 0 };
-  let framePhase = 0;
-  let frameIndex = 0;
   let hasPointer = false;
   let placed = false;
   let visible = false;
@@ -92,17 +90,6 @@ export function startYeon(root: HTMLElement) {
 
     const target = hasPointer ? pointer : idleKiteTarget(reel, size, now);
     steerKite(kite, target, maxLen(), dt);
-
-    const speed = kiteSpeed(kite);
-    framePhase += (0.7 + speed / 140) * FRAMES_PER_TURN * dt;
-    const next = Math.floor(framePhase) % YEON_FRAMES.length;
-    if (next !== frameIndex) frameIndex = next;
-    applyYeonPose(
-      rig,
-      YEON_FRAMES[frameIndex],
-      clamp(stringAngleDeg(kite) - ARM_REST_DEG, -28, 28),
-    );
-
     paintKite();
   }
 
@@ -130,12 +117,12 @@ export function startYeon(root: HTMLElement) {
     import.meta.hot.dispose(stop);
   }
 
-  applyYeonPose(rig, YEON_FRAMES[reduceMotion ? 2 : 0], 0);
+  applyYeonPose(rig, REST_POSE, 0);
   measure();
 
   if (reduceMotion) {
     snapToIdle(0);
-    applyYeonPose(rig, YEON_FRAMES[2], stringAngleDeg(kite) - ARM_REST_DEG);
+    applyYeonPose(rig, REST_POSE, 0);
     paintKite();
     window.addEventListener("resize", () => {
       measure();
