@@ -1,5 +1,5 @@
 {
-  "name": "swimming-pictogram",
+  "name": "sangmo-ribbon",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1 --port 43123"
   },
   "devDependencies": {
+    "typescript": "^7.0.2",
     "vite": "^7.1.3"
   }
 }
