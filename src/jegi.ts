@@ -23,23 +23,14 @@ function integrate(s: JegiState, dt: number, size: { w: number; h: number }) {
   }
 }
 
-/** Mouse is on the jegi: ease toward the pointer, no gravity. */
-export function followJegi(s: JegiState, target: Vec, size: { w: number; h: number }, dt: number) {
-  s.vel.x += (target.x - s.pos.x) * 18 * dt;
-  s.vel.y += (target.y - s.pos.y) * 18 * dt;
-  s.vel.x *= Math.pow(0.08, dt);
-  s.vel.y *= Math.pow(0.08, dt);
-  integrate(s, dt, size);
-}
-
-/** Mouse is still: stay in the air. */
+/** Stay in the air while idle. */
 export function hoverJegi(s: JegiState, size: { w: number; h: number }, dt: number) {
   s.vel.x *= Math.pow(0.06, dt);
   s.vel.y *= Math.pow(0.06, dt);
   integrate(s, dt, size);
 }
 
-/** Mouse left: gravity. */
+/** Gravity. */
 export function stepJegi(s: JegiState, size: { w: number; h: number }, dt: number) {
   s.vel.y += 980 * dt;
   s.vel.x *= Math.pow(0.55, dt);

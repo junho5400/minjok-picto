@@ -1,13 +1,11 @@
 import { WHITE, clamp, readAnchor, resizeCanvas, type Vec } from "./play";
 import {
   applyJegiPose,
-  CONTACT_FRAMES,
   JEGI_FRAMES,
   type JegiRig,
 } from "./jegi-frames";
 import {
   drawJegi,
-  followJegi,
   hoverJegi,
   jegiFallen,
   kickJegi,
@@ -31,7 +29,7 @@ const rig: JegiRig = {
   hem: document.querySelector<SVGPathElement>("#jegi-hem")!,
 };
 
-const KICK_SPEED = 6;
+const KICK_SPEED = 12;
 const ctx = canvas.getContext("2d");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -93,6 +91,24 @@ function run(ctx: CanvasRenderingContext2D) {
     }
   }
 
+  function nearKickingFoot() {
+    const r = 110;
+    return (
+      Math.hypot(jegi.pos.x - foot.x, jegi.pos.y - foot.y) < r ||
+      Math.hypot(jegi.pos.x - peak.x, jegi.pos.y - peak.y) < r
+    );
+  }
+
+  function aimKickX() {
+    return hasPointer ? pointer.x : peak.x;
+  }
+
+  function strike() {
+    if (hit) return;
+    kickJegi(jegi, foot, aimKickX(), 70 + Math.abs(sweep));
+    hit = true;
+  }
+
   function startKick() {
     if (kicking) return;
     kicking = true;
@@ -131,8 +147,6 @@ function run(ctx: CanvasRenderingContext2D) {
       dropped = true;
     }
 
-    if (!kicking && Math.abs(sweep) > (held ? 90 : 140)) startKick();
-
     if (kicking) {
       kickPhase += KICK_SPEED * dt;
       if (kickPhase >= JEGI_FRAMES.length) {
@@ -146,19 +160,26 @@ function run(ctx: CanvasRenderingContext2D) {
       frameIndex = 0;
     }
     applyJegiPose(rig, JEGI_FRAMES[frameIndex]);
+    foot = readAnchor(stage, kickMark);
 
-    if (!hit && kicking && CONTACT_FRAMES.has(frameIndex)) {
-      const reach = Math.hypot(jegi.pos.x - peak.x, jegi.pos.y - peak.y);
-      if (reach < 78 * size.scale) {
-        kickJegi(jegi, peak, hasPointer ? pointer.x : peak.x + 40, 80 + Math.abs(sweep));
-        hit = true;
-        if (!held) dropped = true;
+    if (hit && jegi.vel.y < -40) hit = false;
+
+    if (inPlay && nearKickingFoot()) {
+      const incoming = jegi.vel.y > 16;
+      const resting = Math.abs(jegi.vel.y) < 14 && Math.abs(jegi.vel.x) < 80;
+      if ((incoming || resting) && !hit) {
+        kicking = true;
+        kickPhase = 0;
+        frameIndex = 0;
+        applyJegiPose(rig, JEGI_FRAMES[0]);
+        foot = readAnchor(stage, kickMark);
+        strike();
       }
     }
 
-    if (held) {
-      followJegi(jegi, pointer, size, dt);
-    } else if (dropped) {
+    if (!kicking && Math.abs(sweep) > (held ? 90 : 140)) startKick();
+
+    if (held || dropped) {
       stepJegi(jegi, size, dt);
     } else {
       hoverJegi(jegi, size, dt);
