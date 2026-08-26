@@ -1,38 +1,60 @@
-import { Ribbon, type Vec } from "./ribbon";
+import { drawSangmo, type SangmoState, type Vec } from "./sangmo";
+import { applyPose, FRAMES, type Rig } from "./frames";
 
 const stage = document.querySelector<HTMLElement>(".stage")!;
 const canvas = document.querySelector<HTMLCanvasElement>("#ribbon-layer")!;
-const figure = document.querySelector<SVGSVGElement>(".figure")!;
 const anchorMark = document.querySelector<SVGCircleElement>("#hat-anchor")!;
 const hint = document.querySelector<HTMLElement>(".hint")!;
-const cursor = document.querySelector<HTMLElement>(".cursor-dot")!;
+const cursor = document.querySelector<HTMLElement>(".cursor-ring")!;
 
-const ACCENT = "#DE3B1F";
-const IDLE_DELAY = 1600;
+const rig: Rig = {
+  body: document.querySelector<SVGGElement>("#body")!,
+  head: document.querySelector<SVGGElement>("#head")!,
+  leftArm: document.querySelector<SVGGElement>("#left-arm")!,
+  rightArm: document.querySelector<SVGGElement>("#right-arm")!,
+  legs: document.querySelector<SVGGElement>("#legs")!,
+  foot: document.querySelector<SVGGElement>("#foot")!,
+};
+
+const WHITE = "#ffffff";
+const BASE_SPIN = 5.6;
+const MAX_SPIN = 15;
+/** Dance cels per full turn of the ribbon. */
+const FRAMES_PER_TURN = 8;
 
 const ctx = canvas.getContext("2d");
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
 
 if (!ctx) {
   document.body.classList.add("is-static");
-  hint.textContent =
-    "This browser cannot draw the ribbon, so the dancer is shown still.";
+  hint.textContent = "This browser cannot draw the ribbon, so the dancer is shown still.";
+  applyPose(rig, FRAMES[2]);
 } else {
   run(ctx);
 }
 
 function run(ctx: CanvasRenderingContext2D) {
-  const ribbon = new Ribbon(52);
   const pointer: Vec = { x: 0, y: 0 };
-  const smooth: Vec = { x: 0, y: 0 };
-  let anchor: Vec = { x: 0, y: 0 };
   let size = { w: 0, h: 0, scale: 1 };
-  let idleAngle = 0;
-  let idleMix = 1;
-  let speed = 0;
-  let lastMove = -Infinity;
+  let anchor: Vec = { x: 0, y: 0 };
+  let spin = BASE_SPIN;
+  let framePhase = 0;
+  let frameIndex = -1;
+  let lastPointerX = 0;
+  let sweep = 0;
   let hasPointer = false;
   let last = performance.now();
+
+  const state: SangmoState = {
+    anchor,
+    phase: 0,
+    radius: 0,
+    tilt: 0.34,
+    lift: 0,
+    lean: 0,
+  };
 
   function measure() {
     const rect = stage.getBoundingClientRect();
@@ -40,76 +62,82 @@ function run(ctx: CanvasRenderingContext2D) {
     canvas.width = Math.round(rect.width * dpr);
     canvas.height = Math.round(rect.height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    size = { w: rect.width, h: rect.height, scale: Math.min(rect.width, rect.height) / 520 };
-
-    const mark = anchorMark.getBoundingClientRect();
-    anchor = { x: mark.left + mark.width / 2 - rect.left, y: mark.top + mark.height / 2 - rect.top };
-
-    if (!hasPointer) {
-      pointer.x = smooth.x = anchor.x + size.w * 0.22;
-      pointer.y = smooth.y = anchor.y - size.h * 0.16;
-    }
-    ribbon.reset(anchor);
-  }
-
-  function idleTarget(dt: number): Vec {
-    idleAngle += dt * 0.0022;
-    const radius = Math.min(size.w, size.h) * 0.3;
-    return {
-      x: anchor.x + Math.cos(idleAngle) * radius * 1.15,
-      y: anchor.y - size.h * 0.06 + Math.sin(idleAngle) * radius * 0.6,
+    size = {
+      w: rect.width,
+      h: rect.height,
+      scale: clamp(Math.min(rect.width, rect.height) / 520, 0.55, 2),
     };
+    readAnchor();
+    if (!hasPointer) {
+      pointer.x = anchor.x + size.w * 0.2;
+      pointer.y = anchor.y - size.h * 0.12;
+      lastPointerX = pointer.x;
+    }
+    state.radius = defaultRadius();
+    state.lift = defaultLift();
   }
+
+  function readAnchor() {
+    const rect = stage.getBoundingClientRect();
+    const mark = anchorMark.getBoundingClientRect();
+    anchor = {
+      x: mark.left + mark.width / 2 - rect.left,
+      y: mark.top + mark.height / 2 - rect.top,
+    };
+    state.anchor = anchor;
+  }
+
+  const defaultRadius = () => Math.min(size.w, size.h) * 0.26;
+  const defaultLift = () => Math.min(size.w, size.h) * 0.12;
 
   function frame(now: number) {
-    const dt = Math.min(now - last, 48);
+    const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
 
-    const idle = now - lastMove > IDLE_DELAY;
-    idleMix += ((idle ? 1 : 0) - idleMix) * 0.045;
+    readAnchor();
 
-    const orbit = idleTarget(dt);
-    const target: Vec = {
-      x: pointer.x + (orbit.x - pointer.x) * idleMix,
-      y: pointer.y + (orbit.y - pointer.y) * idleMix,
-    };
+    const reach = hasPointer
+      ? clamp(Math.hypot(pointer.x - anchor.x, pointer.y - anchor.y) * 0.75, size.w * 0.08, size.w * 0.42)
+      : defaultRadius();
+    const wantLift = hasPointer
+      ? clamp((anchor.y - pointer.y) * 0.45 + defaultLift() * 0.5, size.h * 0.02, size.h * 0.3)
+      : defaultLift();
+    const wantLean = hasPointer ? (pointer.x - anchor.x) * 0.18 : 0;
 
-    const step = 0.22 + speed * 0.0006;
-    const nx = smooth.x + (target.x - smooth.x) * Math.min(step, 0.6);
-    const ny = smooth.y + (target.y - smooth.y) * Math.min(step, 0.6);
-    speed = speed * 0.9 + Math.hypot(nx - smooth.x, ny - smooth.y) * 0.1;
-    smooth.x = nx;
-    smooth.y = ny;
+    state.radius += (reach - state.radius) * 0.06;
+    state.lift += (wantLift - state.lift) * 0.06;
+    state.lean += (wantLean - state.lean) * 0.06;
+    state.tilt += (clamp(0.24 + state.lift / Math.max(size.h, 1) * 0.9, 0.2, 0.52) - state.tilt) * 0.06;
 
-    ribbon.update(anchor, smooth, Math.min(size.w, size.h) * 0.95);
+    const wantSpin = clamp(
+      Math.sign(sweep || 1) * (BASE_SPIN + Math.abs(sweep) * 0.05),
+      -MAX_SPIN,
+      MAX_SPIN,
+    );
+    spin += (wantSpin - spin) * 0.04;
+    sweep *= 0.9;
 
-    ctx.save();
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.fillRect(0, 0, size.w, size.h);
-    ctx.restore();
+    state.phase += spin * dt;
+    framePhase += (Math.abs(spin) / (Math.PI * 2)) * FRAMES_PER_TURN * dt;
 
-    ribbon.draw(ctx, ACCENT, size.scale, Math.min(speed / 12, 1));
+    const next = Math.floor(framePhase) % FRAMES.length;
+    if (next !== frameIndex) {
+      frameIndex = next;
+      applyPose(rig, FRAMES[next]);
+    }
 
-    const tilt = ((smooth.x - anchor.x) / size.w) * 4;
-    figure.style.transform = `rotate(${tilt.toFixed(2)}deg)`;
+    ctx.clearRect(0, 0, size.w, size.h);
+    drawSangmo(ctx, state, WHITE, size.scale);
 
     requestAnimationFrame(frame);
-  }
-
-  function paintStill() {
-    ctx.clearRect(0, 0, size.w, size.h);
-    for (let i = 0; i < 90; i++) {
-      ribbon.update(anchor, { x: anchor.x + size.w * 0.26, y: anchor.y - size.h * 0.2 }, Math.min(size.w, size.h) * 0.95);
-    }
-    ribbon.draw(ctx, ACCENT, size.scale, 0);
   }
 
   function movePointer(x: number, y: number) {
     const rect = stage.getBoundingClientRect();
     pointer.x = x - rect.left;
     pointer.y = y - rect.top;
-    lastMove = performance.now();
+    sweep = clamp(sweep + (pointer.x - lastPointerX) * 2, -260, 260);
+    lastPointerX = pointer.x;
     if (!hasPointer) {
       hasPointer = true;
       document.body.classList.add("is-engaged");
@@ -119,23 +147,22 @@ function run(ctx: CanvasRenderingContext2D) {
 
   measure();
   window.addEventListener("resize", measure);
-
   window.addEventListener("pointermove", (e) => movePointer(e.clientX, e.clientY), { passive: true });
-  window.addEventListener(
-    "pointerdown",
-    (e) => {
-      movePointer(e.clientX, e.clientY);
-      document.body.classList.add("is-pressed");
-    },
-    { passive: true },
-  );
-  window.addEventListener("pointerup", () => document.body.classList.remove("is-pressed"), { passive: true });
+  window.addEventListener("pointerdown", (e) => movePointer(e.clientX, e.clientY), { passive: true });
 
-  if (reduceMotion.matches) {
+  if (reduceMotion) {
     document.body.classList.add("is-static");
-    hint.textContent = "Motion is reduced in your system settings, so the ribbon is held still.";
-    paintStill();
-    window.addEventListener("resize", paintStill);
+    hint.textContent = "Motion is reduced in your system settings, so the spin is held still.";
+    applyPose(rig, FRAMES[2]);
+    const paint = () => {
+      measure();
+      readAnchor();
+      state.phase = Math.PI * 0.35;
+      ctx.clearRect(0, 0, size.w, size.h);
+      drawSangmo(ctx, state, WHITE, size.scale);
+    };
+    paint();
+    window.addEventListener("resize", paint);
   } else {
     requestAnimationFrame(frame);
   }
