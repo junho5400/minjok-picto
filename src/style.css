@@ -90,6 +90,17 @@ body {
   visibility: hidden;
 }
 
+.corner-motifs {
+  position: absolute;
+  top: 4.6svh;
+  right: clamp(1.25rem, 2.6vw, 3rem);
+  z-index: 4;
+  display: block;
+  width: clamp(10rem, 16.8vw, 18.25rem);
+  height: auto;
+  pointer-events: none;
+}
+
 .scene-shift {
   position: absolute;
   inset: 0;
@@ -141,7 +152,6 @@ body {
 }
 
 .pictogram-yeon .figure {
-  left: 36%;
   top: 58%;
   height: 56vh;
 }
@@ -319,6 +329,12 @@ body {
 }
 
 @media (max-width: 52rem) {
+  .corner-motifs {
+    top: 2rem;
+    right: 1.25rem;
+    width: min(42vw, 13rem);
+  }
+
   .scene-shift {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr auto auto;

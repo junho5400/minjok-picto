@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@112,500&family=Inter:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/src/style.css?v=ribbon-3" />
+    <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <div class="scroll-root" id="scroll-root">
@@ -22,6 +22,7 @@
         <section class="scene" data-scene="intro" aria-label="태극"></section>
 
         <section class="scene" data-scene="sangmo" aria-labelledby="title-sangmo">
+          <img class="corner-motifs" src="/sangmo-motifs.svg" alt="" aria-hidden="true" />
           <div class="pictogram" aria-hidden="true">
             <canvas id="ribbon-layer"></canvas>
             <svg
@@ -98,6 +99,7 @@
         </section>
 
         <section class="scene" data-scene="kite" aria-labelledby="title-kite">
+          <img class="corner-motifs" src="/yeon-motifs.svg" alt="" aria-hidden="true" />
           <div class="pictogram pictogram-yeon" aria-hidden="true">
             <canvas></canvas>
             <svg class="figure" viewBox="8 218 160 252" fill="none" overflow="visible">
@@ -165,6 +167,7 @@
         </section>
 
         <section class="scene" data-scene="jegi" aria-labelledby="title-jegi">
+          <img class="corner-motifs" src="/jegi-motifs.svg" alt="" aria-hidden="true" />
           <div class="pictogram pictogram-jegi" aria-hidden="true">
             <canvas></canvas>
             <svg class="figure" viewBox="0 0 180 240" fill="none" overflow="visible">
@@ -265,6 +268,6 @@
       </div>
     </div>
 
-    <script type="module" src="/src/main.ts?v=kite-jegi-1"></script>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
