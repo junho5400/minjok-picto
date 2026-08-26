@@ -9,7 +9,7 @@ export function startJegi(root: HTMLElement) {
   const stage = root.querySelector<HTMLElement>(".pictogram")!;
   const canvas = root.querySelector<HTMLCanvasElement>("canvas")!;
   const kickMark = root.querySelector<SVGCircleElement>("#kick-anchor")!;
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", { alpha: true });
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const rig: JegiRig = {
@@ -23,7 +23,7 @@ export function startJegi(root: HTMLElement) {
 
   if (!ctx) {
     applyJegiPose(rig, JEGI_FRAMES[4]);
-    return { setVisible() {}, measure() {} };
+    return { setVisible() {}, measure() {}, stop() {} };
   }
 
   const pointer: Vec = { x: 0, y: 0 };
@@ -36,8 +36,10 @@ export function startJegi(root: HTMLElement) {
   let hasPointer = false;
   let lastPointerX = 0;
   let sweep = 0;
-  let visible = true;
+  let placed = false;
+  let visible = false;
   let last = performance.now();
+  let raf = 0;
 
   const jegi: JegiState = {
     pos: { x: 0, y: 0 },
@@ -46,12 +48,22 @@ export function startJegi(root: HTMLElement) {
     phase: 0,
   };
 
+  function resetJegi() {
+    jegi.pos.x = foot.x + 12;
+    jegi.pos.y = foot.y - 28;
+    jegi.vel.x = 30;
+    jegi.vel.y = -80;
+  }
+
   function measure() {
     size = resizeCanvas(canvas, ctx, stage);
-    foot = readAnchor(stage, kickMark);
-    if (jegi.pos.x === 0 && jegi.pos.y === 0) {
-      jegi.pos.x = foot.x + 16;
-      jegi.pos.y = foot.y - 36;
+    const next = readAnchor(stage, kickMark);
+    const jump = Math.hypot(next.x - foot.x, next.y - foot.y);
+    foot = next;
+    if (size.w < 2 || size.h < 2) return;
+    if (!placed || jump > 48) {
+      resetJegi();
+      placed = true;
     }
   }
 
@@ -62,20 +74,22 @@ export function startJegi(root: HTMLElement) {
     hit = false;
   }
 
-  function resetJegi() {
-    jegi.pos.x = foot.x + 12;
-    jegi.pos.y = foot.y - 28;
-    jegi.vel.x = 30;
-    jegi.vel.y = -80;
+  function paintJegi() {
+    ctx.clearRect(0, 0, size.w, size.h);
+    if (!visible || size.w < 2 || size.h < 2) return;
+    drawJegi(ctx, jegi, INK, size.scale);
   }
 
   function frame(now: number) {
-    requestAnimationFrame(frame);
-    if (!visible) return;
+    raf = requestAnimationFrame(frame);
+    measure();
 
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
-    foot = readAnchor(stage, kickMark);
+    if (!visible) {
+      ctx.clearRect(0, 0, size.w, size.h);
+      return;
+    }
 
     if (!kicking) {
       const fallingIn = jegi.vel.y > 40 && Math.hypot(jegi.pos.x - foot.x, jegi.pos.y - foot.y) < 90;
@@ -108,8 +122,7 @@ export function startJegi(root: HTMLElement) {
     if (jegiFallen(jegi, size)) resetJegi();
     sweep *= 0.88;
 
-    ctx.clearRect(0, 0, size.w, size.h);
-    drawJegi(ctx, jegi, INK, size.scale);
+    paintJegi();
   }
 
   function movePointer(x: number, y: number) {
@@ -128,36 +141,56 @@ export function startJegi(root: HTMLElement) {
     if (visible) startKick();
   });
 
+  const ro = new ResizeObserver(() => measure());
+  ro.observe(stage);
+
+  const stop = () => {
+    cancelAnimationFrame(raf);
+    raf = 0;
+    ro.disconnect();
+  };
+
+  if (import.meta.hot) {
+    import.meta.hot.dispose(stop);
+  }
+
+  applyJegiPose(rig, JEGI_FRAMES[reduceMotion ? 4 : 0]);
+  measure();
+
   if (reduceMotion) {
-    applyJegiPose(rig, JEGI_FRAMES[4]);
-    measure();
     jegi.pos.x = foot.x + 18;
     jegi.pos.y = foot.y - 40;
     jegi.vel.x = 0;
     jegi.vel.y = 0;
-    ctx.clearRect(0, 0, size.w, size.h);
-    drawJegi(ctx, jegi, INK, size.scale);
+    paintJegi();
     window.addEventListener("resize", () => {
       measure();
-      ctx.clearRect(0, 0, size.w, size.h);
-      drawJegi(ctx, jegi, INK, size.scale);
+      paintJegi();
     });
     return {
       setVisible(next: boolean) {
         visible = next;
+        if (next) {
+          measure();
+          paintJegi();
+        }
       },
       measure,
+      stop,
     };
   }
 
-  applyJegiPose(rig, JEGI_FRAMES[0]);
-  measure();
-  requestAnimationFrame(frame);
+  raf = requestAnimationFrame(frame);
 
   return {
     setVisible(next: boolean) {
       visible = next;
+      if (next) {
+        last = performance.now();
+        measure();
+      }
     },
     measure,
+    stop,
   };
 }

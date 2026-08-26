@@ -8,7 +8,7 @@ export function startYeon(root: HTMLElement) {
   const stage = root.querySelector<HTMLElement>(".pictogram")!;
   const canvas = root.querySelector<HTMLCanvasElement>("canvas")!;
   const anchorMark = root.querySelector<SVGCircleElement>("#reel-anchor")!;
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", { alpha: true });
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const rig: YeonRig = {
@@ -21,7 +21,7 @@ export function startYeon(root: HTMLElement) {
 
   if (!ctx) {
     applyYeonPose(rig, YEON_FRAMES[2], 0);
-    return { setVisible() {}, measure() {} };
+    return { setVisible() {}, measure() {}, stop() {} };
   }
 
   const pointer: Vec = { x: 0, y: 0 };
@@ -30,8 +30,10 @@ export function startYeon(root: HTMLElement) {
   let framePhase = 0;
   let frameIndex = 0;
   let hasPointer = false;
-  let visible = true;
+  let placed = false;
+  let visible = false;
   let last = performance.now();
+  let raf = 0;
 
   const kite: KiteState = {
     reel,
@@ -40,18 +42,30 @@ export function startYeon(root: HTMLElement) {
     phase: 0,
   };
 
+  function snapToIdle(now = performance.now()) {
+    const idle = idleKiteTarget(reel, size, now);
+    pointer.x = idle.x;
+    pointer.y = idle.y;
+    kite.pos.x = idle.x;
+    kite.pos.y = idle.y;
+    kite.vel.x = 0;
+    kite.vel.y = 0;
+  }
+
   function measure() {
     size = resizeCanvas(canvas, ctx, stage);
-    reel = readAnchor(stage, anchorMark);
+    const next = readAnchor(stage, anchorMark);
+    const jump = Math.hypot(next.x - reel.x, next.y - reel.y);
+    reel = next;
     kite.reel = reel;
-    if (!hasPointer) {
+    if (size.w < 2 || size.h < 2) return;
+    if (!placed || jump > 48) {
+      snapToIdle();
+      placed = true;
+    } else if (!hasPointer) {
       const idle = idleKiteTarget(reel, size, performance.now());
       pointer.x = idle.x;
       pointer.y = idle.y;
-    }
-    if (kite.pos.x === 0 && kite.pos.y === 0) {
-      kite.pos.x = pointer.x;
-      kite.pos.y = pointer.y;
     }
   }
 
@@ -59,14 +73,22 @@ export function startYeon(root: HTMLElement) {
     return Math.min(size.w, size.h) * 0.72;
   }
 
+  function paintKite() {
+    ctx.clearRect(0, 0, size.w, size.h);
+    if (!visible || size.w < 2 || size.h < 2) return;
+    drawKite(ctx, kite, WHITE, size.scale);
+  }
+
   function frame(now: number) {
-    requestAnimationFrame(frame);
-    if (!visible) return;
+    raf = requestAnimationFrame(frame);
+    measure();
 
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
-    reel = readAnchor(stage, anchorMark);
-    kite.reel = reel;
+    if (!visible) {
+      ctx.clearRect(0, 0, size.w, size.h);
+      return;
+    }
 
     const target = hasPointer ? pointer : idleKiteTarget(reel, size, now);
     steerKite(kite, target, maxLen(), dt);
@@ -81,8 +103,7 @@ export function startYeon(root: HTMLElement) {
       clamp(stringAngleDeg(kite) - ARM_REST_DEG, -28, 28),
     );
 
-    ctx.clearRect(0, 0, size.w, size.h);
-    drawKite(ctx, kite, WHITE, size.scale);
+    paintKite();
   }
 
   function movePointer(x: number, y: number) {
@@ -96,36 +117,54 @@ export function startYeon(root: HTMLElement) {
   window.addEventListener("pointermove", (e) => movePointer(e.clientX, e.clientY), { passive: true });
   window.addEventListener("pointerdown", (e) => movePointer(e.clientX, e.clientY), { passive: true });
 
+  const ro = new ResizeObserver(() => measure());
+  ro.observe(stage);
+
+  const stop = () => {
+    cancelAnimationFrame(raf);
+    raf = 0;
+    ro.disconnect();
+  };
+
+  if (import.meta.hot) {
+    import.meta.hot.dispose(stop);
+  }
+
+  applyYeonPose(rig, YEON_FRAMES[reduceMotion ? 2 : 0], 0);
+  measure();
+
   if (reduceMotion) {
-    applyYeonPose(rig, YEON_FRAMES[2], 0);
-    measure();
-    const target = idleKiteTarget(reel, size, 0);
-    kite.pos.x = target.x;
-    kite.pos.y = target.y;
+    snapToIdle(0);
     applyYeonPose(rig, YEON_FRAMES[2], stringAngleDeg(kite) - ARM_REST_DEG);
-    ctx.clearRect(0, 0, size.w, size.h);
-    drawKite(ctx, kite, WHITE, size.scale);
+    paintKite();
     window.addEventListener("resize", () => {
       measure();
-      ctx.clearRect(0, 0, size.w, size.h);
-      drawKite(ctx, kite, WHITE, size.scale);
+      paintKite();
     });
     return {
       setVisible(next: boolean) {
         visible = next;
+        if (next) {
+          measure();
+          paintKite();
+        }
       },
       measure,
+      stop,
     };
   }
 
-  applyYeonPose(rig, YEON_FRAMES[0], 0);
-  measure();
-  requestAnimationFrame(frame);
+  raf = requestAnimationFrame(frame);
 
   return {
     setVisible(next: boolean) {
       visible = next;
+      if (next) {
+        last = performance.now();
+        measure();
+      }
     },
     measure,
+    stop,
   };
 }
