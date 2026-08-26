@@ -1,0 +1,78 @@
+:root {
+  color-scheme: light;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  line-height: 1.45;
+  color: #111;
+  background: #f4f1ea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.page {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: #5c574c;
+}
+
+h1 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.75rem, 4vw, 2.4rem);
+  letter-spacing: -0.03em;
+}
+
+.lede {
+  margin: 0 0 2rem;
+  max-width: 36ch;
+  color: #3d3a34;
+}
+
+.mark {
+  margin: 0;
+  padding: 2.5rem;
+  background: #fff;
+  border: 1px solid #d9d3c6;
+  display: grid;
+  place-items: center;
+}
+
+.mark img {
+  display: block;
+  width: min(70vw, 320px);
+  height: auto;
+}
+
+.mark figcaption {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: #5c574c;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.sizes {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.25rem;
+  margin: 1.5rem 0 0;
+}
+
+.sizes img {
+  display: block;
+  background: #fff;
+  border: 1px solid #d9d3c6;
+  padding: 0.4rem;
+}
