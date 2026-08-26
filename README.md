@@ -1,8 +1,9 @@
-# Swimming pictogram
+# Pictograms
 
-Olympic-style swimming pictogram generated with [QuiverAI](https://quiver.ai) (Arrow 1.1).
+Vector marks generated with [QuiverAI](https://quiver.ai).
 
-The source mark is `public/swimming-pictogram.svg`: a single black silhouette in a crawl stroke over water ripples, on a transparent background.
+- `public/sangmo-pictogram.svg` — sangmo-spinning pungmul dancer in Korean folk monoline style (Arrow 2.0), maroon strokes on pale pink.
+- `public/swimming-pictogram.svg` — Olympic-style swimming pictogram (Arrow 1.1).
 
 ## Run locally
 
