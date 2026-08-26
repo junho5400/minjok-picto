@@ -235,3 +235,6 @@ window.addEventListener("resize", () => {
 });
 layout();
 paint();
+
+const hashIndex = SCENES.findIndex((s) => s.id === location.hash.replace("#", ""));
+if (hashIndex >= 0) goTo(hashIndex);

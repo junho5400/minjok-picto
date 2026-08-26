@@ -7,10 +7,7 @@ export type JegiState = {
   phase: number;
 };
 
-export function stepJegi(s: JegiState, size: { w: number; h: number }, dt: number) {
-  s.vel.y += 980 * dt;
-  s.vel.x *= Math.pow(0.55, dt);
-  s.vel.y *= Math.pow(0.92, dt);
+function integrate(s: JegiState, dt: number, size: { w: number; h: number }) {
   s.pos.x += s.vel.x * dt;
   s.pos.y += s.vel.y * dt;
   s.spin += s.vel.x * 0.04 * dt + s.vel.y * 0.01 * dt;
@@ -24,16 +21,34 @@ export function stepJegi(s: JegiState, size: { w: number; h: number }, dt: numbe
     s.pos.x = size.w - pad;
     s.vel.x = -Math.abs(s.vel.x) * 0.6;
   }
-  if (s.pos.y < pad) {
-    s.pos.y = pad;
-    s.vel.y = Math.abs(s.vel.y) * 0.25;
-  }
+}
+
+/** Mouse is on the jegi: ease toward the pointer, no gravity. */
+export function followJegi(s: JegiState, target: Vec, size: { w: number; h: number }, dt: number) {
+  s.vel.x += (target.x - s.pos.x) * 18 * dt;
+  s.vel.y += (target.y - s.pos.y) * 18 * dt;
+  s.vel.x *= Math.pow(0.08, dt);
+  s.vel.y *= Math.pow(0.08, dt);
+  integrate(s, dt, size);
+}
+
+/** Mouse is still: stay in the air. */
+export function hoverJegi(s: JegiState, size: { w: number; h: number }, dt: number) {
+  s.vel.x *= Math.pow(0.06, dt);
+  s.vel.y *= Math.pow(0.06, dt);
+  integrate(s, dt, size);
+}
+
+/** Mouse left: gravity. */
+export function stepJegi(s: JegiState, size: { w: number; h: number }, dt: number) {
+  s.vel.y += 980 * dt;
+  s.vel.x *= Math.pow(0.55, dt);
+  s.vel.y *= Math.pow(0.92, dt);
+  integrate(s, dt, size);
 }
 
 export function kickJegi(s: JegiState, from: Vec, aimX: number, power: number) {
   const dirX = Math.max(-1, Math.min(1, (aimX - from.x) / 220));
-  s.pos.x = from.x + 8;
-  s.pos.y = from.y - 10;
   s.vel.x = dirX * (180 + power * 0.9);
   s.vel.y = -(520 + power * 1.6);
   s.spin += dirX * 4;

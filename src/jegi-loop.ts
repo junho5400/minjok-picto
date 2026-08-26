@@ -1,9 +1,17 @@
 import { clamp, readAnchor, resizeCanvas, type Vec } from "./play";
 import { applyJegiPose, CONTACT_FRAMES, JEGI_FRAMES, type JegiRig } from "./jegi-frames";
-import { drawJegi, jegiFallen, kickJegi, stepJegi, type JegiState } from "./jegi";
+import {
+  drawJegi,
+  followJegi,
+  hoverJegi,
+  jegiFallen,
+  kickJegi,
+  stepJegi,
+  type JegiState,
+} from "./jegi";
 
 const INK = "#212121";
-const KICK_SPEED = 14;
+const KICK_SPEED = 6;
 
 export function startJegi(root: HTMLElement) {
   const stage = root.querySelector<HTMLElement>(".pictogram")!;
@@ -19,6 +27,7 @@ export function startJegi(root: HTMLElement) {
     rightArm: root.querySelector<SVGGElement>("#jegi-right-arm")!,
     stand: root.querySelector<SVGGElement>("#jegi-stand")!,
     kick: root.querySelector<SVGGElement>("#jegi-kick")!,
+    hem: root.querySelector<SVGPathElement>("#jegi-hem")!,
   };
 
   if (!ctx) {
@@ -29,11 +38,15 @@ export function startJegi(root: HTMLElement) {
   const pointer: Vec = { x: 0, y: 0 };
   let size = { w: 0, h: 0, scale: 1 };
   let foot: Vec = { x: 0, y: 0 };
+  let peak: Vec = { x: 0, y: 0 };
+  let playOrigin: Vec = { x: 0, y: 0 };
   let kicking = false;
   let kickPhase = 0;
   let frameIndex = 0;
   let hit = false;
   let hasPointer = false;
+  let held = false;
+  let dropped = false;
   let lastPointerX = 0;
   let sweep = 0;
   let placed = false;
@@ -43,25 +56,37 @@ export function startJegi(root: HTMLElement) {
 
   const jegi: JegiState = {
     pos: { x: 0, y: 0 },
-    vel: { x: 40, y: -120 },
+    vel: { x: 0, y: 0 },
     spin: 0,
     phase: 0,
   };
 
   function resetJegi() {
-    jegi.pos.x = foot.x + 12;
-    jegi.pos.y = foot.y - 28;
-    jegi.vel.x = 30;
-    jegi.vel.y = -80;
+    jegi.pos.x = foot.x + 16;
+    jegi.pos.y = foot.y - 36;
+    jegi.vel.x = 0;
+    jegi.vel.y = 0;
+    held = false;
+    dropped = false;
+  }
+
+  function cachePeak() {
+    applyJegiPose(rig, JEGI_FRAMES[0]);
+    playOrigin = readAnchor(stage, kickMark);
+    applyJegiPose(rig, JEGI_FRAMES[4]);
+    peak = readAnchor(stage, kickMark);
+    applyJegiPose(rig, JEGI_FRAMES[frameIndex]);
   }
 
   function measure() {
+    const prevW = size.w;
+    const prevH = size.h;
     size = resizeCanvas(canvas, ctx, stage);
-    const next = readAnchor(stage, kickMark);
-    const jump = Math.hypot(next.x - foot.x, next.y - foot.y);
-    foot = next;
+    foot = readAnchor(stage, kickMark);
     if (size.w < 2 || size.h < 2) return;
-    if (!placed || jump > 48) {
+    const resized = !placed || Math.abs(size.w - prevW) > 8 || Math.abs(size.h - prevH) > 8;
+    if (resized) {
+      cachePeak();
       resetJegi();
       placed = true;
     }
@@ -91,10 +116,21 @@ export function startJegi(root: HTMLElement) {
       return;
     }
 
-    if (!kicking) {
-      const fallingIn = jegi.vel.y > 40 && Math.hypot(jegi.pos.x - foot.x, jegi.pos.y - foot.y) < 90;
-      if (fallingIn || Math.abs(sweep) > 90) startKick();
+    const playR = Math.min(size.w, size.h) * 0.48;
+    const dist = hasPointer
+      ? Math.hypot(pointer.x - playOrigin.x, pointer.y - playOrigin.y)
+      : Infinity;
+    const inPlay = hasPointer && dist < playR;
+
+    if (inPlay) {
+      held = true;
+      dropped = false;
+    } else if (held) {
+      held = false;
+      dropped = true;
     }
+
+    if (!kicking && Math.abs(sweep) > (held ? 90 : 140)) startKick();
 
     if (kicking) {
       kickPhase += KICK_SPEED * dt;
@@ -111,14 +147,22 @@ export function startJegi(root: HTMLElement) {
     applyJegiPose(rig, JEGI_FRAMES[frameIndex]);
 
     if (!hit && kicking && CONTACT_FRAMES.has(frameIndex)) {
-      const reach = Math.hypot(jegi.pos.x - foot.x, jegi.pos.y - foot.y);
+      const reach = Math.hypot(jegi.pos.x - peak.x, jegi.pos.y - peak.y);
       if (reach < 78 * size.scale) {
-        kickJegi(jegi, foot, hasPointer ? pointer.x : foot.x + 40, 80 + Math.abs(sweep));
+        kickJegi(jegi, peak, hasPointer ? pointer.x : peak.x + 40, 80 + Math.abs(sweep));
         hit = true;
+        if (!held) dropped = true;
       }
     }
 
-    stepJegi(jegi, size, dt);
+    if (held) {
+      followJegi(jegi, pointer, size, dt);
+    } else if (dropped) {
+      stepJegi(jegi, size, dt);
+    } else {
+      hoverJegi(jegi, size, dt);
+    }
+
     if (jegiFallen(jegi, size)) resetJegi();
     sweep *= 0.88;
 
@@ -128,10 +172,14 @@ export function startJegi(root: HTMLElement) {
   function movePointer(x: number, y: number) {
     if (!visible) return;
     const rect = stage.getBoundingClientRect();
-    pointer.x = x - rect.left;
-    pointer.y = y - rect.top;
-    sweep = clamp(sweep + (pointer.x - lastPointerX) * 2, -280, 280);
-    lastPointerX = pointer.x;
+    const nextX = x - rect.left;
+    const nextY = y - rect.top;
+    if (hasPointer) {
+      sweep = clamp(sweep + (nextX - lastPointerX) * 2, -280, 280);
+    }
+    pointer.x = nextX;
+    pointer.y = nextY;
+    lastPointerX = nextX;
     hasPointer = true;
   }
 
@@ -139,6 +187,11 @@ export function startJegi(root: HTMLElement) {
   window.addEventListener("pointerdown", (e) => {
     movePointer(e.clientX, e.clientY);
     if (visible) startKick();
+  });
+  window.addEventListener("pointerleave", () => {
+    if (held) dropped = true;
+    hasPointer = false;
+    held = false;
   });
 
   const ro = new ResizeObserver(() => measure());
@@ -156,6 +209,7 @@ export function startJegi(root: HTMLElement) {
 
   applyJegiPose(rig, JEGI_FRAMES[reduceMotion ? 4 : 0]);
   measure();
+  cachePeak();
 
   if (reduceMotion) {
     jegi.pos.x = foot.x + 18;
