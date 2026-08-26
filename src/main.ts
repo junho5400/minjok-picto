@@ -34,7 +34,11 @@ const yeon = startYeon(kiteScene);
 const jegi = startJegi(jegiScene);
 
 if (import.meta.hot) {
-  import.meta.hot.dispose(() => sangmo.stop?.());
+  import.meta.hot.dispose(() => {
+    sangmo.stop?.();
+    yeon.stop?.();
+    jegi.stop?.();
+  });
 }
 
 const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);

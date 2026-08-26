@@ -13,14 +13,20 @@ export function resizeCanvas(
   stage: HTMLElement,
 ) {
   const rect = stage.getBoundingClientRect();
+  const w = Math.max(stage.clientWidth, rect.width, 1);
+  const h = Math.max(stage.clientHeight, rect.height, 1);
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = Math.round(rect.width * dpr);
-  canvas.height = Math.round(rect.height * dpr);
+  const nextW = Math.round(w * dpr);
+  const nextH = Math.round(h * dpr);
+  if (canvas.width !== nextW || canvas.height !== nextH) {
+    canvas.width = nextW;
+    canvas.height = nextH;
+  }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   return {
-    w: rect.width,
-    h: rect.height,
-    scale: clamp(Math.min(rect.width, rect.height) / 520, 0.55, 2),
+    w,
+    h,
+    scale: clamp(Math.min(w, h) / 520, 0.55, 2),
   };
 }
 
