@@ -1,18 +1,22 @@
 # Sangmo ribbon
 
-An interactive page built around a pictogram generated with [QuiverAI](https://quiver.ai).
+Interactive pages built around pictograms generated with [QuiverAI](https://quiver.ai).
 
-A pungmul dancer is drawn in flat ink monoline. The only colored element is the
-_sangmo_ ribbon on the hat, which is simulated as a rope: pinned at the hat,
-tipped at your cursor, so all the slack coils into a spin. Leave the pointer
-alone and the ribbon keeps orbiting on its own.
+Each mark is a two-color Korean folk monoline. The figure is animated as eight
+drawn SVG cels. The live prop — ribbon, kite, or jegi — is drawn on a canvas.
 
-Respects `prefers-reduced-motion` (holds a still ribbon) and falls back to the
-plain drawing when a canvas context is unavailable.
+- **상모돌리기** — the sangmo ribbon is a rope pinned at the hat, tipped at your cursor.
+- **연날리기** — the bangpae-yeon follows the pointer on a taut string from the reel.
+- **제기차기** — click or sweep to kick; the jegi flies from the foot at the peak frame.
+
+Respects `prefers-reduced-motion` and falls back to a still drawing when a canvas
+context is unavailable.
 
 ## Marks
 
 - `public/sangmo-pictogram.svg` — sangmo-spinning dancer, Korean folk monoline (Arrow 2.0).
+- `public/yeonnalligi-pictogram.svg` — kite flying (연날리기), Korean folk monoline (Arrow 2.0).
+- `public/jegichagi-pictogram.svg` — jegichagi (제기차기), Korean folk monoline (Arrow 2.0).
 - `public/swimming-pictogram.svg` — Olympic-style swimming pictogram (Arrow 1.1).
 
 ## Run locally
