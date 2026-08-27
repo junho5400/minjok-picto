@@ -3,7 +3,6 @@ import { startYeon } from "./yeon-loop";
 import { startJegi } from "./jegi-loop";
 import { createMorph } from "./morph";
 import { createCursor } from "./cursor";
-import { startTilt } from "./tilt";
 const SCENES = [
   { id: "intro", bg: "#ffffff", ink: "dark" },
   { id: "sangmo", bg: "#ce2f3a", ink: "light" },
@@ -36,7 +35,6 @@ const yeon = startYeon(kiteScene);
 const jegi = startJegi(jegiScene);
 const morph = createMorph(stage, [sangmoScene, kiteScene, jegiScene]);
 const cursorFx = createCursor(stage);
-const tilt = startTilt();
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
@@ -45,7 +43,6 @@ if (import.meta.hot) {
     jegi.stop?.();
     morph.stop();
     cursorFx.stop();
-    tilt.stop();
   });
 }
 
@@ -265,6 +262,18 @@ window.addEventListener("resize", () => {
 });
 layout();
 paint();
+
+// iOS Safari can report a zero-sized stage on the very first pass, which
+// collapses the taegeuk to nothing until the next scroll; settle again once
+// the page has fully laid out.
+window.addEventListener("load", () => {
+  layout();
+  paint();
+});
+setTimeout(() => {
+  layout();
+  paint();
+}, 400);
 
 const hashIndex = SCENES.findIndex((s) => s.id === location.hash.replace("#", ""));
 if (hashIndex >= 0) goTo(hashIndex);
