@@ -30,9 +30,16 @@ const HEM_RAISED = [
 ] as const;
 
 const HEM_DROPPED = [
-  136, 176, 150, 196, 132, 214, 105, 216, 82, 218, 68, 210, 61.8, 200.49, 44.45, 160.52, 54.39,
+  152.7, 157.8, 158, 182, 132, 214, 105, 216, 82, 218, 68, 210, 61.8, 200.49, 44.45, 160.52, 54.39,
   126.59, 70.13, 95.79,
 ] as const;
+
+/** Skirt fold lines from the waist: aimed at the lifted hem when raised,
+ *  draped onto the extended leg when the foot drops. [sx,sy,c1x,c1y,c2x,c2y,ex,ey] */
+const FOLD1_RAISED = [97.45, 89.09, 101.24, 90.99, 108.6, 96.19, 108.6, 96.19] as const;
+const FOLD1_DROPPED = [97.45, 89.09, 101, 98, 106.5, 110, 107.8, 119] as const;
+const FOLD2_RAISED = [92.62, 91.68, 96.43, 95.11, 103.59, 103.87, 103.59, 103.87] as const;
+const FOLD2_DROPPED = [92.62, 91.68, 95.5, 100, 99.5, 113, 100.3, 122] as const;
 
 export const JEGI_FRAMES: JegiPose[] = [
   { bob: 0.8, head: -1.2, leftArm: 4, rightArm: -5, stand: 2, kick: 8, kickScale: 0.22 },
@@ -55,11 +62,18 @@ export type JegiRig = {
   stand: SVGGElement;
   kick: SVGGElement;
   hem: SVGPathElement;
+  fold1?: SVGPathElement | null;
+  fold2?: SVGPathElement | null;
 };
 
 function hemPath(t: number) {
   const n = HEM_RAISED.map((v, i) => lerp(HEM_DROPPED[i], v, t));
   return `M${n[0]} ${n[1]}C${n[2]} ${n[3]} ${n[4]} ${n[5]} ${n[6]} ${n[7]} ${n[8]} ${n[9]} ${n[10]} ${n[11]} ${n[12]} ${n[13]} ${n[14]} ${n[15]} ${n[16]} ${n[17]} ${n[18]} ${n[19]}`;
+}
+
+function foldPath(dropped: readonly number[], raised: readonly number[], t: number) {
+  const n = raised.map((v, i) => lerp(dropped[i], v, t));
+  return `M${n[0]} ${n[1]}C${n[2]} ${n[3]} ${n[4]} ${n[5]} ${n[6]} ${n[7]}`;
 }
 
 export function applyJegiPose(rig: JegiRig, pose: JegiPose) {
@@ -70,4 +84,6 @@ export function applyJegiPose(rig: JegiRig, pose: JegiPose) {
   rotate(rig.stand, pose.stand, JEGI_PIVOTS.stand);
   rotate(rig.kick, pose.kick + (1 - pose.kickScale) * 52, JEGI_PIVOTS.kick);
   rig.hem.setAttribute("d", hemPath(pose.kickScale));
+  rig.fold1?.setAttribute("d", foldPath(FOLD1_DROPPED, FOLD1_RAISED, pose.kickScale));
+  rig.fold2?.setAttribute("d", foldPath(FOLD2_DROPPED, FOLD2_RAISED, pose.kickScale));
 }

@@ -1,7 +1,7 @@
 import { startSangmo } from "./sangmo-loop";
 import { startYeon } from "./yeon-loop";
 import { startJegi } from "./jegi-loop";
-
+import { createMorph } from "./morph";
 const SCENES = [
   { id: "intro", bg: "#ffffff", ink: "dark" },
   { id: "sangmo", bg: "#ce2f3a", ink: "light" },
@@ -32,12 +32,14 @@ const jegiScene = document.querySelector<HTMLElement>('[data-scene="jegi"]')!;
 const sangmo = startSangmo(sangmoScene);
 const yeon = startYeon(kiteScene);
 const jegi = startJegi(jegiScene);
+const morph = createMorph(stage, [sangmoScene, kiteScene, jegiScene]);
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     sangmo.stop?.();
     yeon.stop?.();
     jegi.stop?.();
+    morph.stop();
   });
 }
 
@@ -46,7 +48,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const easeInOut = (t: number) => t * t * (3 - 2 * t);
 
 function sceneHeight() {
-  return window.innerHeight * 1.45;
+  return Math.max(window.innerHeight, 1) * 1.45;
 }
 
 function layout() {
@@ -136,6 +138,10 @@ function paint() {
   if (sangmoOn) sangmo.measure();
   if (yeonOn) yeon.measure();
   if (jegiOn) jegi.measure();
+
+  // Figure-to-figure transitions morph instead of riding the scene wipe.
+  const morphOn = !reduceMotion && wiping && index >= 1;
+  morph.set(morphOn ? { a: index - 1, b: index, t: wipe } : null);
 }
 
 function placeTaegeuk(index: number, wipe: number, introT: number) {
@@ -161,7 +167,13 @@ function placeTaegeuk(index: number, wipe: number, introT: number) {
   const x = lerp(start.x, land.x, t);
   const y = lerp(start.y, land.y, t);
   const size = lerp(start.size, land.size, t);
-  taegeuk.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) scale(${size / INTRO_SIZE})`;
+
+  // Roll exactly one clockwise turn per slot hop, so the mark keeps rolling
+  // yet always comes to rest flag-aligned — on the intro and the white final
+  // scene the true-color taegeuk must sit exactly like the 태극기.
+  const roll = reduceMotion || index === 0 ? 0 : 360 * (index - 1 + slotT);
+
+  taegeuk.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(${roll.toFixed(1)}deg) scale(${size / INTRO_SIZE})`;
 
   let light = 0;
   if (index === 0) light = introT;

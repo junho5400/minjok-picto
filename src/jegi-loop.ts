@@ -28,6 +28,8 @@ export function startJegi(root: HTMLElement) {
     stand: root.querySelector<SVGGElement>("#jegi-stand")!,
     kick: root.querySelector<SVGGElement>("#jegi-kick")!,
     hem: root.querySelector<SVGPathElement>("#jegi-hem")!,
+    fold1: root.querySelector<SVGPathElement>("#jegi-fold1"),
+    fold2: root.querySelector<SVGPathElement>("#jegi-fold2"),
   };
 
   if (!ctx) {

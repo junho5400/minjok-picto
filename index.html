@@ -19,9 +19,31 @@
         <div class="bg" id="bg-current"></div>
         <div class="bg" id="bg-next"></div>
 
+        <svg width="0" height="0" aria-hidden="true" style="position: absolute">
+          <symbol id="mark-sangmo" viewBox="0 0 168 128">
+            <g stroke="currentColor" stroke-width="12" fill="none">
+              <path d="M168 16 H16 V112 H112 V48 H48 V80 H80" />
+            </g>
+          </symbol>
+          <symbol id="mark-kite" viewBox="0 0 160 160">
+            <g stroke="currentColor" stroke-width="12" fill="none">
+              <path d="M56 8 H152 V104 H56 Z" />
+              <rect x="91" y="43" width="26" height="26" />
+              <path d="M56 104 V128 H32 V152 H8" />
+            </g>
+          </symbol>
+          <symbol id="mark-jegi" viewBox="0 0 144 144">
+            <g stroke="currentColor" stroke-width="12" fill="none">
+              <path d="M24 24 V120 H120 V76" />
+              <rect x="102" y="18" width="26" height="26" fill="currentColor" stroke="none" />
+            </g>
+          </symbol>
+        </svg>
+
         <section class="scene" data-scene="intro" aria-label="태극"></section>
 
         <section class="scene" data-scene="sangmo" aria-labelledby="title-sangmo">
+          <span class="hanja" aria-hidden="true">舞</span>
           <img class="corner-motifs" src="/sangmo-motifs.svg" alt="" aria-hidden="true" />
           <div class="pictogram" aria-hidden="true">
             <canvas id="ribbon-layer"></canvas>
@@ -86,6 +108,7 @@
           </div>
           <div class="scene-shift">
             <header class="scene-copy">
+              <svg class="corner-mark mark-top" viewBox="0 0 168 128" aria-hidden="true"><use href="#mark-sangmo" /></svg>
               <h1 class="display" id="title-sangmo">Sangmo</h1>
               <p class="korean">상모 돌리기</p>
             </header>
@@ -99,11 +122,12 @@
         </section>
 
         <section class="scene" data-scene="kite" aria-labelledby="title-kite">
+          <span class="hanja" aria-hidden="true">鳶</span>
           <img class="corner-motifs" src="/yeon-motifs.svg" alt="" aria-hidden="true" />
           <div class="pictogram pictogram-yeon" aria-hidden="true">
             <canvas></canvas>
             <svg class="figure" viewBox="8 218 160 252" fill="none" overflow="visible">
-              <g id="yeon-body" stroke="currentColor" stroke-width="2.05" stroke-linecap="round" stroke-linejoin="round">
+              <g id="yeon-body" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
                 <g id="yeon-legs">
                   <path d="m70.18 365.3 3.03 29.37" />
                   <path d="m41.13 337.8-14.14 43c26.35 19.58 73.18 19.51 94.57-6.72l-26.91-62.42-2.45-28.05" />
@@ -154,6 +178,7 @@
           </div>
           <div class="scene-shift">
             <header class="scene-copy">
+              <svg class="corner-mark mark-top" viewBox="0 0 160 160" aria-hidden="true"><use href="#mark-kite" /></svg>
               <h1 class="display" id="title-kite">Flying</h1>
               <p class="korean">연 날리기</p>
             </header>
@@ -167,26 +192,27 @@
         </section>
 
         <section class="scene" data-scene="jegi" aria-labelledby="title-jegi">
+          <span class="hanja" aria-hidden="true">蹴</span>
           <img class="corner-motifs" src="/jegi-motifs.svg" alt="" aria-hidden="true" />
           <div class="pictogram pictogram-jegi" aria-hidden="true">
             <canvas></canvas>
             <svg class="figure" viewBox="0 0 180 240" fill="none" overflow="visible">
-              <g id="jegi-body" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <g id="jegi-body" stroke="currentColor" stroke-width="2.17" stroke-linecap="round" stroke-linejoin="round">
                 <g id="jegi-stand">
                   <path d="m95.24 194.7s-4.44 16.28-4.44 17.89c0 1.7 3.42 7.41 7.89 11.92 4.47 4.52-7.94 5.65-11.86 2.25-3.91-3.4-6.22-5.2-7.32-6.68-1.11-1.48 1.01-5.6 2.03-7.04 1.01-1.45 0.51-13.71 0.51-13.71" />
-                  <path d="m81.03 213.8c3.92 4.82 9.8 12.09 14.58 7.7" stroke-width="1.2" />
+                  <path d="m81.03 213.8c3.92 4.82 9.8 12.09 14.58 7.7" />
                 </g>
                 <g id="jegi-skirt">
                   <path
                     id="jegi-hem"
                     d="M149.5 81.55C153.61 94.33 145.08 100.5 146.78 114.56 152.15 159.22 96.02 206.15 61.8 200.49 44.45 160.52 54.39 126.59 70.13 95.79"
                   />
-                  <path d="m70.09 145.9c1.07-10.28 2.48-17.89 4.2-26.74" stroke-width="1.2" />
-                  <path d="m97.45 89.09c3.79 1.9 11.15 7.1 11.15 7.1" />
-                  <path d="m92.62 91.68c3.81 3.43 10.97 12.19 10.97 12.19" stroke-width="1.2" />
+                  <path d="m70.09 145.9c1.07-10.28 2.48-17.89 4.2-26.74" />
+                  <path id="jegi-fold1" d="m97.45 89.09c3.79 1.9 11.15 7.1 11.15 7.1" />
+                  <path id="jegi-fold2" d="m92.62 91.68c3.81 3.43 10.97 12.19 10.97 12.19" />
                 </g>
                 <g id="jegi-kick">
-                  <path d="m89.91 128.8c16.49-34.04 35.65-56.38 53.95-55.38" stroke-width="1.2" />
+                  <path d="m89.91 128.8c16.49-34.04 35.65-56.38 53.95-55.38" />
                   <path d="m143.9 74.46s0.74 6.57 5.04 8.63l4.23-5.61-3.23-7.95-6.04 4.93z" />
                   <path d="m150 69.6c7.17-8.66 12.52-17.26 16.83-15.82 3.4 1.13 1.63 7.58-2.05 13.76-3.68 6.17-2.18 10.68-11.73 9.88-1.67-1.72-3.05-7.83-3.05-7.83v0.01z" />
                   <circle id="kick-anchor" cx="154" cy="68" r="1.2" fill="none" stroke="none" />
@@ -215,13 +241,14 @@
                   <path d="m67.64 56.64c-0.68 1.03-1.82 1.92-3.03 2.27-2.66 0.77-5.46-1.13-6.13-3.71-0.62-2.38 0.78-5.55 3.92-5.79" />
                   <path d="m64.77 53.36c-2.43-3.25-2.48-8.18-0.89-12.33 2.77-7.23 11.58-10.23 18.54-7.19 4.61 2.01 6.42 7.15 6 9.72-0.8 4.83 2.45 5.31 0.93 11.14-1.35 5.26-4 8.53-10.9 6.02" />
                   <path d="m73.46 50.9c-1.73-2.02-4.73-0.78-4.4 1.93 0.28 2.24 2.62 4.32 4.18 3.64" />
-                  <path d="m72.69 50.24c6.06-3.9 9.53-9.79 9.61-16.26" stroke-width="1.2" />
+                  <path d="m72.69 50.24c6.06-3.9 9.53-9.79 9.61-16.26" />
                 </g>
               </g>
             </svg>
           </div>
           <div class="scene-shift">
             <header class="scene-copy">
+              <svg class="corner-mark mark-top" viewBox="0 0 144 144" aria-hidden="true"><use href="#mark-jegi" /></svg>
               <h1 class="display" id="title-jegi">Jaegi-</h1>
               <p class="korean">제기차기</p>
             </header>
