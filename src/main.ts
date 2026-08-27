@@ -3,6 +3,7 @@ import { startYeon } from "./yeon-loop";
 import { startJegi } from "./jegi-loop";
 import { createMorph } from "./morph";
 import { createCursor } from "./cursor";
+import { startTilt } from "./tilt";
 const SCENES = [
   { id: "intro", bg: "#ffffff", ink: "dark" },
   { id: "sangmo", bg: "#ce2f3a", ink: "light" },
@@ -35,6 +36,7 @@ const yeon = startYeon(kiteScene);
 const jegi = startJegi(jegiScene);
 const morph = createMorph(stage, [sangmoScene, kiteScene, jegiScene]);
 const cursorFx = createCursor(stage);
+const tilt = startTilt();
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
@@ -43,6 +45,7 @@ if (import.meta.hot) {
     jegi.stop?.();
     morph.stop();
     cursorFx.stop();
+    tilt.stop();
   });
 }
 
@@ -200,6 +203,14 @@ function goTo(sceneIndex: number) {
 
 for (const slot of slots) {
   slot.addEventListener("click", () => goTo(Number(slot.dataset.target)));
+}
+
+// Mobile: the clamped wall label under the title grows in place on tap.
+for (const essay of document.querySelectorAll<HTMLElement>(".scene .body")) {
+  essay.addEventListener("click", () => {
+    const open = essay.closest(".scene")?.classList.toggle("essay-open");
+    essay.style.maxHeight = open ? `${essay.scrollHeight}px` : "";
+  });
 }
 
 taegeuk.style.pointerEvents = "auto";

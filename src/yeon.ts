@@ -56,7 +56,7 @@ export function drawKite(
   const ang = Math.atan2(dy, dx);
   const sag = Math.min(dist * 0.08, 28 * scale);
 
-  stroke(ctx, accent, 1.6 * scale);
+  stroke(ctx, accent, 1.8 * scale);
   ctx.beginPath();
   ctx.moveTo(reel.x, reel.y);
   ctx.quadraticCurveTo(
@@ -73,7 +73,7 @@ export function drawKite(
   ctx.translate(pos.x, pos.y);
   ctx.rotate(ang + Math.PI * 0.5);
 
-  stroke(ctx, color, 1.7 * scale);
+  stroke(ctx, color, 1.9 * scale);
   ctx.strokeRect(-w, -h, w * 2, h * 2);
   ctx.beginPath();
   ctx.arc(0, 0, w * 0.38, 0, Math.PI * 2);
@@ -89,7 +89,7 @@ export function drawKite(
   ctx.lineTo(-w * 0.18, h + 8 * scale);
   ctx.stroke();
 
-  stroke(ctx, color, 1.25 * scale);
+  stroke(ctx, color, 1.4 * scale);
   for (let i = 0; i < 3; i++) {
     const t0 = s.phase * 2.1 + i * 0.9;
     ctx.beginPath();

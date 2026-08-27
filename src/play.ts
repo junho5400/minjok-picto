@@ -32,7 +32,8 @@ export function resizeCanvas(
   return {
     w,
     h,
-    scale: clamp(Math.min(w, h) / 520, 0.55, 2),
+    // Phone-sized stages get a floor so the drawn props stay bold.
+    scale: clamp(Math.min(w, h) / 520, Math.min(w, h) < 640 ? 0.92 : 0.55, 2),
   };
 }
 

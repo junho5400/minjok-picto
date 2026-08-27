@@ -2,8 +2,10 @@ import { clamp, lerp, resizeCanvas } from "./play";
 
 /** Samples per stroke. */
 const N = 36;
-/** Portion of the transition spent staggering stroke departures. */
-const STAG = 0.12;
+/** Strokes keep their own shape outside this window and melt into the
+ *  target shape only mid-flight. */
+const BLEND_START = 0.25;
+const BLEND_SPAN = 0.5;
 
 /** Body-part buckets so strokes morph into their counterpart limb. */
 const ROLE: Record<string, string> = {
@@ -27,8 +29,14 @@ const ROLE: Record<string, string> = {
   "jegi-head": "head",
 };
 
+/** Optional hand overrides (group:indexWithinGroup pairs, keyed by
+ *  "figureA|figureB"). Matching otherwise minimizes travel, which keeps the
+ *  figure together mid-flight; add a pair here only when proximity mismatches. */
+const CURATED: Record<string, [string, string][]> = {};
+
 type Stroke = {
   el: SVGGeometryElement;
+  key: string;
   role: string;
   width: number;
   d: string | null;
@@ -42,7 +50,7 @@ type Figure = {
   strokes: Stroke[];
 };
 
-type Pair = { a: number; b: number; rev: boolean; amp: number; lag: number };
+type Pair = { a: number; b: number; rev: boolean };
 
 export type MorphState = { a: number; b: number; t: number } | null;
 
@@ -78,17 +86,21 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
     if (f) return f;
     const svg = roots[i].querySelector<SVGSVGElement>(".pictogram svg.figure")!;
     const strokes: Stroke[] = [];
+    const groupCounts: Record<string, number> = {};
     for (const el of svg.querySelectorAll<SVGGeometryElement>("path")) {
       let role = "torso";
+      let gid = "root";
       for (let g = el.parentElement; g && g !== (svg as unknown as HTMLElement); g = g.parentElement) {
-        const mapped = g.id && ROLE[g.id];
-        if (mapped) {
-          role = mapped;
+        if (g.id) {
+          gid = g.id;
+          role = ROLE[g.id] ?? role;
           break;
         }
       }
+      groupCounts[gid] = groupCounts[gid] ?? 0;
       strokes.push({
         el,
+        key: `${gid}:${groupCounts[gid]++}`,
         role,
         width: parseFloat(getComputedStyle(el).strokeWidth) || 1,
         d: null,
@@ -156,74 +168,58 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
         };
       });
     type Info = ReturnType<typeof describe>[number];
-    const bucket = (list: Info[]) => {
-      const map = new Map<string, Info[]>();
-      for (const it of list) {
-        const arr = map.get(it.role) ?? [];
-        arr.push(it);
-        map.set(it.role, arr);
-      }
-      return map;
-    };
-    const ia = describe(figure(ai));
-    const ib = describe(figure(bi));
-    const minY = Math.min(...ia.map((s) => s.cy));
-    const spanY = Math.max(Math.max(...ia.map((s) => s.cy)) - minY, 1);
-    const ba = bucket(ia);
-    const bb = bucket(ib);
+    const A = figure(ai);
+    const B = figure(bi);
+    const ia = describe(A);
+    const ib = describe(B);
 
     const out: Pair[] = [];
     const push = (a: Info, b: Info) => {
       const straight = Math.hypot(a.sx - b.sx, a.sy - b.sy) + Math.hypot(a.ex - b.ex, a.ey - b.ey);
       const crossed = Math.hypot(a.sx - b.ex, a.sy - b.ey) + Math.hypot(a.ex - b.sx, a.ey - b.sy);
-      const travel = Math.hypot(a.cx - b.cx, a.cy - b.cy);
-      out.push({
-        a: a.idx,
-        b: b.idx,
-        rev: crossed < straight,
-        // Strokes that morph in place stay put; only far movers arc a little.
-        amp: Math.min(travel / 240, 1) * 0.35,
-        // Top-to-bottom ripple instead of random departures.
-        lag: (a.cy - minY) / spanY,
-      });
+      out.push({ a: a.idx, b: b.idx, rev: crossed < straight });
     };
+
+    // The hand-curated pairs first: the major shapes carry over meaningfully.
+    const usedA = new Set<number>();
+    const usedB = new Set<number>();
+    const byKeyA = new Map(ia.map((s) => [A.strokes[s.idx].key, s]));
+    const byKeyB = new Map(ib.map((s) => [B.strokes[s.idx].key, s]));
+    for (const [keyA, keyB] of CURATED[`${ai}|${bi}`] ?? []) {
+      const a = byKeyA.get(keyA);
+      const b = byKeyB.get(keyB);
+      if (!a || !b) continue;
+      usedA.add(a.idx);
+      usedB.add(b.idx);
+      push(a, b);
+    }
+
+    // The rest match by proximity, preferring the same body part; whatever is
+    // left over merges into its closest counterpart.
+    const restA = ia.filter((s) => !usedA.has(s.idx));
+    const restB = ib.filter((s) => !usedB.has(s.idx));
+    const cands: { a: Info; b: Info; cost: number }[] = [];
+    for (const a of restA) {
+      for (const b of restB) {
+        const penalty = a.role === b.role ? 0 : 60;
+        cands.push({ a, b, cost: Math.hypot(a.cx - b.cx, a.cy - b.cy) + penalty });
+      }
+    }
+    cands.sort((p, q) => p.cost - q.cost);
+    for (const c of cands) {
+      if (usedA.has(c.a.idx) || usedB.has(c.b.idx)) continue;
+      usedA.add(c.a.idx);
+      usedB.add(c.b.idx);
+      push(c.a, c.b);
+    }
     const nearest = (from: Info, list: Info[]) =>
       list.reduce((best, cur) =>
         Math.hypot(cur.cx - from.cx, cur.cy - from.cy) < Math.hypot(best.cx - from.cx, best.cy - from.cy)
           ? cur
           : best,
       );
-
-    for (const role of new Set([...ba.keys(), ...bb.keys()])) {
-      const realA = ba.get(role);
-      const realB = bb.get(role);
-      const la = realA ?? ba.get("torso")!;
-      const lb = realB ?? bb.get("torso")!;
-
-      // Greedy nearest matching so counterparts that sit close morph into
-      // each other; leftovers split off from / merge into their closest match.
-      const cands: { a: Info; b: Info; cost: number }[] = [];
-      for (const a of la) {
-        for (const b of lb) {
-          cands.push({
-            a,
-            b,
-            cost: Math.hypot(a.cx - b.cx, a.cy - b.cy) + 0.35 * Math.abs(a.len - b.len),
-          });
-        }
-      }
-      cands.sort((p, q) => p.cost - q.cost);
-      const usedA = new Set<number>();
-      const usedB = new Set<number>();
-      for (const c of cands) {
-        if (usedA.has(c.a.idx) || usedB.has(c.b.idx)) continue;
-        usedA.add(c.a.idx);
-        usedB.add(c.b.idx);
-        push(c.a, c.b);
-      }
-      if (realA) for (const a of realA) if (!usedA.has(a.idx)) push(a, nearest(a, lb));
-      if (realB) for (const b of realB) if (!usedB.has(b.idx)) push(nearest(b, la), b);
-    }
+    for (const a of ia) if (!usedA.has(a.idx)) push(a, nearest(a, ib));
+    for (const b of ib) if (!usedB.has(b.idx)) push(nearest(b, ia), b);
     return out;
   }
 
@@ -274,6 +270,10 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
     ctx!.lineCap = "round";
     ctx!.lineJoin = "round";
 
+    const tt = smooth(clamp(t, 0, 1));
+    const u = smooth(clamp((tt - BLEND_START) / BLEND_SPAN, 0, 1));
+    const thin = 1 - 0.22 * Math.sin(Math.PI * tt);
+
     for (const pair of pairsFor(active.a, active.b)) {
       const sa = A.strokes[pair.a];
       const sb = B.strokes[pair.b];
@@ -281,32 +281,31 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
       const scaleB = project(sb, origin, bufB);
       if (!scaleA || !scaleB) continue;
 
-      const tt = smooth(clamp((t - pair.lag * STAG) / (1 - STAG), 0, 1));
-      let cx = 0;
-      let cy = 0;
+      let cax = 0;
+      let cay = 0;
+      let cbx = 0;
+      let cby = 0;
       for (let i = 0; i < N; i++) {
-        const j = pair.rev ? N - 1 - i : i;
-        const x = lerp(bufA[i * 2], bufB[j * 2], tt);
-        const y = lerp(bufA[i * 2 + 1], bufB[j * 2 + 1], tt);
-        bufM[i * 2] = x;
-        bufM[i * 2 + 1] = y;
-        cx += x;
-        cy += y;
+        cax += bufA[i * 2];
+        cay += bufA[i * 2 + 1];
+        cbx += bufB[i * 2];
+        cby += bufB[i * 2 + 1];
       }
-      cx /= N;
-      cy /= N;
+      cax /= N;
+      cay /= N;
+      cbx /= N;
+      cby /= N;
 
-      // Mid-flight curl: swing each stroke around its own centroid.
-      const ang = Math.sin(Math.PI * tt) * pair.amp;
-      const cos = Math.cos(ang);
-      const sin = Math.sin(ang);
-      ctx!.lineWidth = Math.max(lerp(sa.width * scaleA, sb.width * scaleB, tt), 0.5);
+      // The stroke's centroid travels the whole way while its shape stays
+      // intact outside the mid-flight blend window.
+      const cx = lerp(cax, cbx, tt);
+      const cy = lerp(cay, cby, tt);
+      ctx!.lineWidth = Math.max(lerp(sa.width * scaleA, sb.width * scaleB, tt) * thin, 0.5);
       ctx!.beginPath();
       for (let i = 0; i < N; i++) {
-        const dx = bufM[i * 2] - cx;
-        const dy = bufM[i * 2 + 1] - cy;
-        const x = cx + dx * cos - dy * sin;
-        const y = cy + dx * sin + dy * cos;
+        const j = pair.rev ? N - 1 - i : i;
+        const x = cx + lerp(bufA[i * 2] - cax, bufB[j * 2] - cbx, u);
+        const y = cy + lerp(bufA[i * 2 + 1] - cay, bufB[j * 2 + 1] - cby, u);
         if (i === 0) ctx!.moveTo(x, y);
         else ctx!.lineTo(x, y);
       }
