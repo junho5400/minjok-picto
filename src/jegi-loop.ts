@@ -97,13 +97,20 @@ export function startJegi(root: HTMLElement) {
 
   function strike() {
     kickJegi(jegi, foot, hasPointer ? pointer : peak);
-    if (tally) {
+    // Five bars make a unit, five units a row; a run past 100 keeps counting
+    // but the record stops growing.
+    if (tally && kicks < 100) {
+      if (kicks % 5 === 0) {
+        const unit = document.createElement("span");
+        unit.className = "tally-unit";
+        tally.appendChild(unit);
+      }
       const bar = document.createElement("span");
       bar.className = "tally-bar";
       bar.style.background = OBANG[kicks % 5];
-      tally.appendChild(bar);
-      kicks++;
+      tally.lastElementChild?.appendChild(bar);
     }
+    kicks++;
   }
 
   function startKick() {

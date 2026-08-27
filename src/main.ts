@@ -127,9 +127,15 @@ function paint() {
   pager.classList.toggle("is-dark", pagerScene.ink === "dark");
   pager.classList.toggle("is-light", pagerScene.ink === "light");
 
-  const inkOf = (scene: (typeof SCENES)[number]) => (scene.ink === "dark" ? "#212121" : "#ffffff");
-  cursorFx.setActive(index >= 1);
-  cursorFx.setSplit(inkOf(current), inkOf(next), wiping ? (1 - wipe) * window.innerHeight : Infinity);
+  // The intro cursor is sosaek — barely-there on the white opening.
+  const inkOf = (i: number) =>
+    i === 0 ? "#f0eae0" : SCENES[i].ink === "light" ? "#ffffff" : "#212121";
+  cursorFx.setActive(true);
+  cursorFx.setSplit(
+    inkOf(index),
+    inkOf(Math.min(index + 1, LAST)),
+    wiping ? (1 - wipe) * window.innerHeight : Infinity,
+  );
 
   const introT = index === 0 ? wipe : 1;
   const pagerT = easeInOut(clamp((introT - 0.35) / 0.65, 0, 1));
@@ -221,7 +227,6 @@ for (const essay of document.querySelectorAll<HTMLElement>(".scene .body")) {
 }
 
 taegeuk.style.pointerEvents = "auto";
-taegeuk.style.cursor = "pointer";
 taegeuk.addEventListener("click", () => {
   const { index, wipe } = readProgress();
   goTo(index === 0 && wipe < 0.2 ? 1 : 0);

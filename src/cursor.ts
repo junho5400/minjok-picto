@@ -1,5 +1,6 @@
-/** Minimal cursor: a filled ink square, off on the intro. During a scene wipe
- *  the square splits along the background boundary, taking each region's ink. */
+/** Minimal cursor: a filled ink square on every scene. During a scene wipe
+ *  the square splits along the background boundary, taking each region's ink,
+ *  and it turns into a diamond over the clickable taegeuk. */
 
 const R = 6.5;
 
@@ -22,14 +23,14 @@ export function createCursor(stage: HTMLElement) {
   let seen = false;
 
   function paintSquare() {
+    let fill = bottomInk;
     if (boundary >= cy + R) {
-      square.style.background = topInk;
-    } else if (boundary <= cy - R) {
-      square.style.background = bottomInk;
-    } else {
+      fill = topInk;
+    } else if (boundary > cy - R) {
       const p = boundary - (cy - R);
-      square.style.background = `linear-gradient(${topInk} 0px, ${topInk} ${p}px, ${bottomInk} ${p}px)`;
+      fill = `linear-gradient(${topInk} 0px, ${topInk} ${p}px, ${bottomInk} ${p}px)`;
     }
+    square.style.setProperty("--square-fill", fill);
   }
 
   const onMove = (e: PointerEvent) => {
@@ -40,6 +41,13 @@ export function createCursor(stage: HTMLElement) {
     paintSquare();
   };
   window.addEventListener("pointermove", onMove, { passive: true });
+
+  // Over the clickable taegeuk the square eases into a diamond.
+  const taegeuk = document.getElementById("taegeuk");
+  const toDiamond = () => square.classList.add("is-diamond");
+  const toSquare = () => square.classList.remove("is-diamond");
+  taegeuk?.addEventListener("pointerenter", toDiamond);
+  taegeuk?.addEventListener("pointerleave", toSquare);
 
   return {
     /** The intro keeps the native cursor; scenes switch to the ink square. */
@@ -58,6 +66,8 @@ export function createCursor(stage: HTMLElement) {
     },
     stop() {
       window.removeEventListener("pointermove", onMove);
+      taegeuk?.removeEventListener("pointerenter", toDiamond);
+      taegeuk?.removeEventListener("pointerleave", toSquare);
       square.remove();
       document.body.classList.remove("has-cursor-fx");
     },
