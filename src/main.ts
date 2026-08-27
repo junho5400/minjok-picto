@@ -54,8 +54,18 @@ function sceneHeight() {
   return Math.max(window.innerHeight, 1) * 1.45;
 }
 
+const snapMarks = SCENES.map(() => {
+  const el = document.createElement("div");
+  el.className = "snap-mark";
+  scrollRoot.appendChild(el);
+  return el;
+});
+
 function layout() {
   scrollRoot.style.height = `${LAST * sceneHeight() + window.innerHeight}px`;
+  snapMarks.forEach((el, i) => {
+    el.style.top = `${targetScroll(i)}px`;
+  });
 }
 
 function maxScroll() {
@@ -253,6 +263,42 @@ const onScroll = () => {
 };
 
 window.addEventListener("scroll", onScroll, { passive: true });
+
+// Touch: a drag that starts sideways belongs to the play layer — lock the
+// page against scrolling for the rest of that gesture so the finger can then
+// steer freely in every direction.
+let gesture: "idle" | "undecided" | "play" | "scroll" = "idle";
+let gestureX = 0;
+let gestureY = 0;
+window.addEventListener(
+  "touchstart",
+  (e) => {
+    if (e.touches.length !== 1) {
+      gesture = "scroll";
+      return;
+    }
+    gesture = "undecided";
+    gestureX = e.touches[0].clientX;
+    gestureY = e.touches[0].clientY;
+  },
+  { passive: true },
+);
+window.addEventListener(
+  "touchmove",
+  (e) => {
+    if (gesture === "scroll" || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - gestureX;
+    const dy = e.touches[0].clientY - gestureY;
+    if (gesture === "undecided") {
+      if (Math.hypot(dx, dy) < 8) return;
+      gesture = Math.abs(dx) > Math.abs(dy) ? "play" : "scroll";
+    }
+    if (gesture === "play" && e.cancelable) e.preventDefault();
+  },
+  { passive: false },
+);
+window.addEventListener("touchend", () => (gesture = "idle"), { passive: true });
+window.addEventListener("touchcancel", () => (gesture = "idle"), { passive: true });
 window.addEventListener("resize", () => {
   layout();
   paint();

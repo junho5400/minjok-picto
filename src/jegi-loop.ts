@@ -12,15 +12,9 @@ import {
 const KICK_SPEED = 12;
 const CONTACT_R = 26;
 
-/** Tally strokes of the counting character 正, in writing order. */
-const TALLY_STROKES = ["M10 14 H90", "M50 16 V86", "M50 52 H86", "M24 50 V86", "M8 86 H92"];
-
-function tallyGlyph(strokes: number) {
-  const paths = TALLY_STROKES.slice(0, strokes)
-    .map((d) => `<path d="${d}"/>`)
-    .join("");
-  return `<svg viewBox="0 0 100 100" aria-hidden="true">${paths}</svg>`;
-}
+/** Obangsaek, one color per kick: five kicks complete a saekdong unit.
+ *  White is the undyed sosaek tone so it reads on the white scene. */
+const OBANG = ["#0048a0", "#ce2f3a", "#f2b705", "#e7dfd2", "#212121"];
 
 export function startJegi(root: HTMLElement) {
   const stage = root.querySelector<HTMLElement>(".pictogram")!;
@@ -104,9 +98,11 @@ export function startJegi(root: HTMLElement) {
   function strike() {
     kickJegi(jegi, foot, hasPointer ? pointer : peak);
     if (tally) {
+      const bar = document.createElement("span");
+      bar.className = "tally-bar";
+      bar.style.background = OBANG[kicks % 5];
+      tally.appendChild(bar);
       kicks++;
-      const rem = kicks % 5;
-      tally.innerHTML = tallyGlyph(5).repeat(Math.floor(kicks / 5)) + (rem ? tallyGlyph(rem) : "");
     }
   }
 
