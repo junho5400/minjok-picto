@@ -12,6 +12,7 @@
   --blue: #0048a0;
   --white: #ffffff;
   --ink: #212121;
+  --accent: #c9930f;
   --dot: #2a2a2a;
   --page: 3.2vw;
   --display: "Anybody", "Seenonim", sans-serif;
@@ -276,9 +277,8 @@ body {
   width: 1.2rem;
   height: 1.2rem;
   fill: none;
-  stroke: currentColor;
+  stroke: var(--accent);
   stroke-width: 9;
-  opacity: 0.6;
 }
 
 .cursor-square {

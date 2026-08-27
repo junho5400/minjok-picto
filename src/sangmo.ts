@@ -51,8 +51,8 @@ export function drawSangmo(
   scale: number,
 ) {
   const spine = sangmoSpine(s);
-  const head = 3 * scale;
-  const tail = 1.1 * scale;
+  const head = 3.4 * scale;
+  const tail = 1.25 * scale;
   const left: Vec[] = [];
   const right: Vec[] = [];
 
@@ -83,8 +83,9 @@ export function drawSangmo(
   ctx.closePath();
   ctx.fill();
 
+  // Round cap flush with the ribbon width, so the tip ends without a bead.
   const tip = spine[spine.length - 1];
   ctx.beginPath();
-  ctx.arc(tip.x, tip.y, tail * 1.4, 0, Math.PI * 2);
+  ctx.arc(tip.x, tip.y, tail / 2, 0, Math.PI * 2);
   ctx.fill();
 }

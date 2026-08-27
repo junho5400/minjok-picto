@@ -1,4 +1,4 @@
-import { readAnchor, resizeCanvas, type Vec } from "./play";
+import { ACCENT_DEEP, readAnchor, resizeCanvas, type Vec } from "./play";
 import { applyJegiPose, JEGI_FRAMES, type JegiRig } from "./jegi-frames";
 import {
   drawJegi,
@@ -9,7 +9,6 @@ import {
   type JegiState,
 } from "./jegi";
 
-const INK = "#212121";
 const KICK_SPEED = 12;
 const CONTACT_R = 26;
 
@@ -120,7 +119,7 @@ export function startJegi(root: HTMLElement) {
   function paintJegi() {
     ctx.clearRect(0, 0, size.w, size.h);
     if (!visible || size.w < 2 || size.h < 2) return;
-    drawJegi(ctx, jegi, INK, size.scale);
+    drawJegi(ctx, jegi, ACCENT_DEEP, size.scale);
   }
 
   function frame(now: number) {

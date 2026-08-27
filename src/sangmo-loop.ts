@@ -1,7 +1,7 @@
+import { ACCENT_SOFT } from "./play";
 import { drawSangmo, type SangmoState, type Vec } from "./sangmo";
 import { applyPose, FRAMES, type Rig } from "./frames";
 
-const WHITE = "#ffffff";
 const BASE_SPIN = 5.6;
 const MAX_SPIN = 15;
 const FRAMES_PER_TURN = 8;
@@ -124,7 +124,7 @@ export function startSangmo(root: HTMLElement) {
   function paintRibbon() {
     ctx.clearRect(0, 0, size.w, size.h);
     if (size.w < 2 || size.h < 2 || state.radius < 1) return;
-    drawSangmo(ctx, state, WHITE, size.scale);
+    drawSangmo(ctx, state, ACCENT_SOFT, size.scale);
   }
 
   function frame(now: number) {

@@ -42,7 +42,13 @@ function stroke(ctx: CanvasRenderingContext2D, color: string, width: number) {
   ctx.lineJoin = "round";
 }
 
-export function drawKite(ctx: CanvasRenderingContext2D, s: KiteState, color: string, scale: number) {
+export function drawKite(
+  ctx: CanvasRenderingContext2D,
+  s: KiteState,
+  color: string,
+  scale: number,
+  accent = color,
+) {
   const { reel, pos } = s;
   const dx = pos.x - reel.x;
   const dy = pos.y - reel.y;
@@ -50,7 +56,7 @@ export function drawKite(ctx: CanvasRenderingContext2D, s: KiteState, color: str
   const ang = Math.atan2(dy, dx);
   const sag = Math.min(dist * 0.08, 28 * scale);
 
-  stroke(ctx, color, 1.35 * scale);
+  stroke(ctx, accent, 1.6 * scale);
   ctx.beginPath();
   ctx.moveTo(reel.x, reel.y);
   ctx.quadraticCurveTo(
@@ -70,7 +76,7 @@ export function drawKite(ctx: CanvasRenderingContext2D, s: KiteState, color: str
   stroke(ctx, color, 1.7 * scale);
   ctx.strokeRect(-w, -h, w * 2, h * 2);
   ctx.beginPath();
-  ctx.arc(0, -h * 0.12, w * 0.38, 0, Math.PI * 2);
+  ctx.arc(0, 0, w * 0.38, 0, Math.PI * 2);
   ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(-w, -h);

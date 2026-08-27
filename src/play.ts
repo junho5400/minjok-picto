@@ -2,6 +2,12 @@ export type Vec = { x: number; y: number };
 
 export const WHITE = "#ffffff";
 
+/** Obangsaek gold, tuned per background so the tone sits with each scene:
+ *  bright on blue, soft against red, deep on white. */
+export const ACCENT = "#f2b705";
+export const ACCENT_SOFT = "#f4c14f";
+export const ACCENT_DEEP = "#c9930f";
+
 export const clamp = (v: number, min: number, max: number) =>
   Math.min(Math.max(v, min), max);
 

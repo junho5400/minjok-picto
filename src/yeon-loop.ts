@@ -1,4 +1,4 @@
-import { WHITE, readAnchor, resizeCanvas, type Vec } from "./play";
+import { ACCENT, WHITE, readAnchor, resizeCanvas, type Vec } from "./play";
 import { applyYeonPose, YEON_FRAMES, type YeonRig } from "./yeon-frames";
 import { drawKite, idleKiteTarget, steerKite, type KiteState } from "./yeon";
 
@@ -74,7 +74,7 @@ export function startYeon(root: HTMLElement) {
   function paintKite() {
     ctx.clearRect(0, 0, size.w, size.h);
     if (!visible || size.w < 2 || size.h < 2) return;
-    drawKite(ctx, kite, WHITE, size.scale);
+    drawKite(ctx, kite, WHITE, size.scale, ACCENT);
   }
 
   function frame(now: number) {
