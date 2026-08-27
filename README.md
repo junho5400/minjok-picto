@@ -1,23 +1,39 @@
-# Sangmo ribbon
+# Minjok Picto
 
-Interactive pages built around pictograms generated with [QuiverAI](https://quiver.ai).
+An interactive media-art handbook of Korean folk play. Three games — sangmo
+spinning, kite flying, and jegichagi — are drawn as living monoline pictograms
+and staged like an installation in a modern Korean museum.
 
-Each mark is a two-color Korean folk monoline. The figure is animated as eight
-drawn SVG cels. The live prop — ribbon, kite, or jegi — is drawn on a canvas.
+Scroll to move between rooms: the figures morph stroke-by-stroke into one
+another, backgrounds wipe through taegeuk red, blue, and white, and the taegeuk
+mark rolls along the pager, always coming to rest flag-aligned.
 
-- **상모돌리기** — the sangmo ribbon is a rope pinned at the hat, tipped at your cursor.
-- **연날리기** — the bangpae-yeon follows the pointer on a taut string from the reel.
-- **제기차기** — click or sweep to kick; the jegi flies from the foot at the peak frame.
+## Scenes
 
-Respects `prefers-reduced-motion` and falls back to a still drawing when a canvas
-context is unavailable.
+- **Sangmo (상모돌리기)** — the sangmo ribbon is a rope pinned at the dancer's
+  hat, tipped at your cursor.
+- **Yeon (연날리기)** — the bangpae-yeon kite follows the pointer on a taut
+  string from the reel.
+- **Jegi (제기차기)** — the jegi drops onto the kicker's foot and launches
+  toward your cursor; each clean kick adds one stroke of 正 to the tally, and a
+  dropped jegi ends the run.
 
-## Marks
+Each scene is annotated in the site's shared stroke language: noemun (雷紋)
+marks beside the titles, translucent hanja stamps (舞 · 鳶 · 蹴) behind the
+ending typography, and an ink-square cursor that splits its color along the
+background boundary mid-scroll.
 
-- `public/sangmo-pictogram.svg` — sangmo-spinning dancer, Korean folk monoline (Arrow 2.0).
-- `public/yeonnalligi-pictogram.svg` — kite flying (연날리기), Korean folk monoline (Arrow 2.0).
-- `public/jegichagi-pictogram.svg` — jegichagi (제기차기), Korean folk monoline (Arrow 2.0).
-- `public/swimming-pictogram.svg` — Olympic-style swimming pictogram (Arrow 1.1).
+Respects `prefers-reduced-motion` (still drawings, no morphing) and keeps the
+native cursor on touch devices. On touch screens, horizontal drags drive the
+interactions and vertical swipes scroll.
+
+## Assets
+
+- `public/sangmo-pictogram.svg`, `public/yeonnalligi-pictogram.svg`,
+  `public/jegichagi-pictogram.svg` — the base pictograms (Korean folk monoline,
+  QuiverAI Arrow 2.0).
+- `public/noemun-sangmo.svg`, `public/noemun-yeon.svg`, `public/noemun-jegi.svg`
+  — the per-scene noemun marks, importable into Figma as-is.
 
 ## Run locally
 

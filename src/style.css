@@ -29,6 +29,8 @@ body {
   margin: 0;
   min-height: 100%;
   background: var(--white);
+  /* Vertical swipes scroll; horizontal drags reach the scenes as pointer moves. */
+  touch-action: pan-y pinch-zoom;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

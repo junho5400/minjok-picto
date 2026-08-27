@@ -22,7 +22,7 @@ export const JEGI_PIVOTS = {
 /**
  * Skirt outline as absolute cubics.
  * Raised: right hem pulled up to the kicking foot.
- * Dropped: that same 아랫단 hanging at standing length.
+ * Dropped: that same hem hanging at standing length.
  */
 const HEM_RAISED = [
   149.5, 81.55, 153.61, 94.33, 145.08, 100.5, 146.78, 114.56, 152.15, 159.22, 96.02, 206.15, 61.8,

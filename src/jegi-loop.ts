@@ -13,7 +13,7 @@ const INK = "#212121";
 const KICK_SPEED = 12;
 const CONTACT_R = 26;
 
-/** 바를 정(正) tally strokes, in writing order. */
+/** Tally strokes of the counting character 正, in writing order. */
 const TALLY_STROKES = ["M10 14 H90", "M50 16 V86", "M50 52 H86", "M24 50 V86", "M8 86 H92"];
 
 function tallyGlyph(strokes: number) {

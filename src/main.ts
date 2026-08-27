@@ -177,7 +177,7 @@ function placeTaegeuk(index: number, wipe: number, introT: number) {
 
   // Roll exactly one clockwise turn per slot hop, so the mark keeps rolling
   // yet always comes to rest flag-aligned — on the intro and the white final
-  // scene the true-color taegeuk must sit exactly like the 태극기.
+  // scene the true-color taegeuk must sit exactly like the national flag.
   const roll = reduceMotion || index === 0 ? 0 : 360 * (index - 1 + slotT);
 
   taegeuk.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(${roll.toFixed(1)}deg) scale(${size / INTRO_SIZE})`;
@@ -209,7 +209,7 @@ taegeuk.addEventListener("click", () => {
   goTo(index === 0 && wipe < 0.2 ? 1 : 0);
 });
 taegeuk.setAttribute("role", "button");
-taegeuk.setAttribute("aria-label", "처음으로");
+taegeuk.setAttribute("aria-label", "Back to start");
 taegeuk.tabIndex = 0;
 taegeuk.addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === " ") {
