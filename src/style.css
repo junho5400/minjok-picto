@@ -365,7 +365,6 @@ body.has-cursor-fx .taegeuk {
   width: 300px;
   height: 300px;
   margin: 0;
-  overflow: hidden;
   transform-origin: 50% 50%;
   pointer-events: none;
   will-change: transform;
@@ -375,7 +374,6 @@ body.has-cursor-fx .taegeuk {
   position: relative;
   width: 100%;
   height: 100%;
-  overflow: hidden;
   animation: taegeuk-enter 1.1s cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 

@@ -257,6 +257,10 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
 
   function render() {
     raf = requestAnimationFrame(render);
+    draw();
+  }
+
+  function draw() {
     const size = resizeCanvas(canvas, ctx!, stage);
     ctx!.clearRect(0, 0, size.w, size.h);
     if (!on || size.w < 2) return;
@@ -321,8 +325,12 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
       if (next !== on) {
         on = next;
         canvas.classList.toggle("is-on", on);
-        if (on && !raf) raf = requestAnimationFrame(render);
-        if (!on) {
+        if (on) {
+          // Paint synchronously so the figures never blank for a frame while
+          // the SVGs hide and the first rAF tick is still pending.
+          draw();
+          if (!raf) raf = requestAnimationFrame(render);
+        } else {
           cancelAnimationFrame(raf);
           raf = 0;
           ctx!.clearRect(0, 0, canvas.width, canvas.height);
