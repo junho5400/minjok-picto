@@ -2,6 +2,7 @@ import { startSangmo } from "./sangmo-loop";
 import { startYeon } from "./yeon-loop";
 import { startJegi } from "./jegi-loop";
 import { createMorph } from "./morph";
+import { createCursor } from "./cursor";
 const SCENES = [
   { id: "intro", bg: "#ffffff", ink: "dark" },
   { id: "sangmo", bg: "#ce2f3a", ink: "light" },
@@ -33,6 +34,7 @@ const sangmo = startSangmo(sangmoScene);
 const yeon = startYeon(kiteScene);
 const jegi = startJegi(jegiScene);
 const morph = createMorph(stage, [sangmoScene, kiteScene, jegiScene]);
+const cursorFx = createCursor(stage);
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
@@ -40,6 +42,7 @@ if (import.meta.hot) {
     yeon.stop?.();
     jegi.stop?.();
     morph.stop();
+    cursorFx.stop();
   });
 }
 
@@ -113,6 +116,10 @@ function paint() {
   const pagerScene = wiping && wipe > 0.08 ? next : current;
   pager.classList.toggle("is-dark", pagerScene.ink === "dark");
   pager.classList.toggle("is-light", pagerScene.ink === "light");
+
+  const inkOf = (scene: (typeof SCENES)[number]) => (scene.ink === "dark" ? "#212121" : "#ffffff");
+  cursorFx.setActive(index >= 1);
+  cursorFx.setSplit(inkOf(current), inkOf(next), wiping ? (1 - wipe) * window.innerHeight : Infinity);
 
   const introT = index === 0 ? wipe : 1;
   const pagerT = easeInOut(clamp((introT - 0.35) / 0.65, 0, 1));

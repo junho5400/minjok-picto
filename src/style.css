@@ -261,6 +261,44 @@ body {
   text-align: right;
 }
 
+.tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-width: 16rem;
+  min-height: 1.2rem;
+  margin-top: 1.2rem;
+}
+
+.tally svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 9;
+  opacity: 0.6;
+}
+
+.cursor-square {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 8;
+  width: 13px;
+  height: 13px;
+  background: var(--ink);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform;
+  transition: opacity 160ms ease-out;
+}
+
+body.has-cursor-fx,
+body.has-cursor-fx .slot,
+body.has-cursor-fx .taegeuk {
+  cursor: none;
+}
+
 .scroll-hint {
   position: absolute;
   left: 50%;

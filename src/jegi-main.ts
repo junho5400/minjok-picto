@@ -29,6 +29,7 @@ const rig: JegiRig = {
   hem: document.querySelector<SVGPathElement>("#jegi-hem")!,
   fold1: document.querySelector<SVGPathElement>("#jegi-fold1"),
   fold2: document.querySelector<SVGPathElement>("#jegi-fold2"),
+  standLeg: document.querySelector<SVGPathElement>("#jegi-standleg"),
 };
 
 const KICK_SPEED = 12;

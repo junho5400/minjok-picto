@@ -41,6 +41,19 @@ const FOLD1_DROPPED = [97.45, 89.09, 101, 98, 106.5, 110, 107.8, 119] as const;
 const FOLD2_RAISED = [92.62, 91.68, 96.43, 95.11, 103.59, 103.87, 103.59, 103.87] as const;
 const FOLD2_DROPPED = [92.62, 91.68, 95.5, 100, 99.5, 113, 100.3, 122] as const;
 
+/** Standing leg + shoe outline: its two upper edges tuck under the hem as the
+ *  skirt drops so the leg never pokes through the fabric. */
+const STAND_RAISED = [
+  95.24, 194.7, 95.24, 194.7, 90.8, 210.98, 90.8, 212.59, 90.8, 214.29, 94.22, 220, 98.69, 224.51,
+  103.16, 229.03, 90.75, 230.16, 86.83, 226.76, 82.92, 223.36, 80.61, 221.56, 79.51, 220.08, 78.4,
+  218.6, 80.52, 214.48, 81.54, 213.04, 82.55, 211.59, 82.05, 199.33, 82.05, 199.33,
+] as const;
+const STAND_DROPPED = [
+  92, 209.5, 91.4, 211, 90.9, 212.2, 90.8, 212.59, 90.8, 214.29, 94.22, 220, 98.69, 224.51, 103.16,
+  229.03, 90.75, 230.16, 86.83, 226.76, 82.92, 223.36, 80.61, 221.56, 79.51, 220.08, 78.4, 218.6,
+  80.52, 214.48, 81.54, 213.04, 81.9, 212.5, 82.05, 211, 82.2, 209.5,
+] as const;
+
 export const JEGI_FRAMES: JegiPose[] = [
   { bob: 0.8, head: -1.2, leftArm: 4, rightArm: -5, stand: 2, kick: 8, kickScale: 0.22 },
   { bob: 0.2, head: -0.4, leftArm: 1, rightArm: -2, stand: 1, kick: 5, kickScale: 0.4 },
@@ -64,6 +77,7 @@ export type JegiRig = {
   hem: SVGPathElement;
   fold1?: SVGPathElement | null;
   fold2?: SVGPathElement | null;
+  standLeg?: SVGPathElement | null;
 };
 
 function hemPath(t: number) {
@@ -71,9 +85,14 @@ function hemPath(t: number) {
   return `M${n[0]} ${n[1]}C${n[2]} ${n[3]} ${n[4]} ${n[5]} ${n[6]} ${n[7]} ${n[8]} ${n[9]} ${n[10]} ${n[11]} ${n[12]} ${n[13]} ${n[14]} ${n[15]} ${n[16]} ${n[17]} ${n[18]} ${n[19]}`;
 }
 
+/** Lerp two same-shaped point lists into "M x y C ..." (one C per 6 numbers). */
 function foldPath(dropped: readonly number[], raised: readonly number[], t: number) {
   const n = raised.map((v, i) => lerp(dropped[i], v, t));
-  return `M${n[0]} ${n[1]}C${n[2]} ${n[3]} ${n[4]} ${n[5]} ${n[6]} ${n[7]}`;
+  let d = `M${n[0]} ${n[1]}`;
+  for (let i = 2; i < n.length; i += 6) {
+    d += `C${n[i]} ${n[i + 1]} ${n[i + 2]} ${n[i + 3]} ${n[i + 4]} ${n[i + 5]}`;
+  }
+  return d;
 }
 
 export function applyJegiPose(rig: JegiRig, pose: JegiPose) {
@@ -86,4 +105,5 @@ export function applyJegiPose(rig: JegiRig, pose: JegiPose) {
   rig.hem.setAttribute("d", hemPath(pose.kickScale));
   rig.fold1?.setAttribute("d", foldPath(FOLD1_DROPPED, FOLD1_RAISED, pose.kickScale));
   rig.fold2?.setAttribute("d", foldPath(FOLD2_DROPPED, FOLD2_RAISED, pose.kickScale));
+  rig.standLeg?.setAttribute("d", foldPath(STAND_DROPPED, STAND_RAISED, pose.kickScale));
 }

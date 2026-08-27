@@ -13,10 +13,21 @@ const INK = "#212121";
 const KICK_SPEED = 12;
 const CONTACT_R = 26;
 
+/** 바를 정(正) tally strokes, in writing order. */
+const TALLY_STROKES = ["M10 14 H90", "M50 16 V86", "M50 52 H86", "M24 50 V86", "M8 86 H92"];
+
+function tallyGlyph(strokes: number) {
+  const paths = TALLY_STROKES.slice(0, strokes)
+    .map((d) => `<path d="${d}"/>`)
+    .join("");
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">${paths}</svg>`;
+}
+
 export function startJegi(root: HTMLElement) {
   const stage = root.querySelector<HTMLElement>(".pictogram")!;
   const canvas = root.querySelector<HTMLCanvasElement>("canvas")!;
   const kickMark = root.querySelector<SVGCircleElement>("#kick-anchor")!;
+  const tally = root.querySelector<HTMLElement>(".tally");
   const ctx = canvas.getContext("2d", { alpha: true });
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -30,6 +41,7 @@ export function startJegi(root: HTMLElement) {
     hem: root.querySelector<SVGPathElement>("#jegi-hem")!,
     fold1: root.querySelector<SVGPathElement>("#jegi-fold1"),
     fold2: root.querySelector<SVGPathElement>("#jegi-fold2"),
+    standLeg: root.querySelector<SVGPathElement>("#jegi-standleg"),
   };
 
   if (!ctx) {
@@ -88,8 +100,15 @@ export function startJegi(root: HTMLElement) {
     }
   }
 
+  let kicks = 0;
+
   function strike() {
     kickJegi(jegi, foot, hasPointer ? pointer : peak);
+    if (tally) {
+      kicks++;
+      const rem = kicks % 5;
+      tally.innerHTML = tallyGlyph(5).repeat(Math.floor(kicks / 5)) + (rem ? tallyGlyph(rem) : "");
+    }
   }
 
   function startKick() {
@@ -159,6 +178,11 @@ export function startJegi(root: HTMLElement) {
     if (jegiFallen(jegi, size)) {
       resetJegi();
       engaged = inPlay;
+      // A dropped jegi ends the run, as in the real game.
+      if (tally && kicks) {
+        kicks = 0;
+        tally.innerHTML = "";
+      }
     }
 
     paintJegi();
