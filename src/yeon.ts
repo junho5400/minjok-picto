@@ -48,6 +48,7 @@ export function drawKite(
   color: string,
   scale: number,
   accent = color,
+  from?: Vec,
 ) {
   const { reel, pos } = s;
   const dx = pos.x - reel.x;
@@ -56,12 +57,28 @@ export function drawKite(
   const ang = Math.atan2(dy, dx);
   const sag = Math.min(dist * 0.08, 28 * scale);
 
+  // The line is pinched at the hand, and the pinch gives a little toward the
+  // kite's pull, so the fixed point drifts as the kite flies.
+  const pin = {
+    x: reel.x + (dx / dist) * 4 * scale,
+    y: reel.y + (dy / dist) * 4 * scale,
+  };
+
   stroke(ctx, accent, 1.8 * scale);
   ctx.beginPath();
-  ctx.moveTo(reel.x, reel.y);
+  if (from) {
+    // Slack run from the reel up to the pinch, sagging under gravity.
+    const rx = pin.x - from.x;
+    const ry = pin.y - from.y;
+    const slack = Math.min(Math.hypot(rx, ry) * 0.07, 9 * scale);
+    ctx.moveTo(from.x, from.y);
+    ctx.quadraticCurveTo(from.x + rx * 0.5, from.y + ry * 0.5 + slack, pin.x, pin.y);
+  } else {
+    ctx.moveTo(pin.x, pin.y);
+  }
   ctx.quadraticCurveTo(
-    reel.x + dx * 0.5 + (dy / dist) * sag,
-    reel.y + dy * 0.5 - (dx / dist) * sag * 0.35,
+    pin.x + (pos.x - pin.x) * 0.5 + (dy / dist) * sag,
+    pin.y + (pos.y - pin.y) * 0.5 - (dx / dist) * sag * 0.35,
     pos.x,
     pos.y,
   );
@@ -106,14 +123,6 @@ export function drawKite(
   }
 
   ctx.restore();
-}
-
-export function kiteSpeed(s: KiteState) {
-  return Math.hypot(s.vel.x, s.vel.y);
-}
-
-export function stringAngleDeg(s: KiteState) {
-  return (Math.atan2(s.pos.y - s.reel.y, s.pos.x - s.reel.x) * 180) / Math.PI;
 }
 
 export function idleKiteTarget(reel: Vec, size: { w: number; h: number }, now: number): Vec {

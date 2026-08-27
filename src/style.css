@@ -516,7 +516,11 @@ body.has-cursor-fx .taegeuk {
   }
 
   #yeon-body {
-    stroke-width: 2.95;
+    stroke-width: 1.72;
+  }
+
+  #yeon-body .fine {
+    stroke-width: 1.28;
   }
 
   #jegi-body {

@@ -39,6 +39,9 @@ type Stroke = {
   key: string;
   role: string;
   width: number;
+  /** Fine detail (e.g. the reel's coil) dissolves in place instead of flying;
+   *  a cluster of thin strokes merging into one line reads as a smudge. */
+  fade: boolean;
   d: string | null;
   local: Float32Array;
 };
@@ -103,6 +106,7 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
         key: `${gid}:${groupCounts[gid]++}`,
         role,
         width: parseFloat(getComputedStyle(el).strokeWidth) || 1,
+        fade: !!el.closest("g.fine"),
         d: null,
         local: new Float32Array(0),
       });
@@ -170,8 +174,8 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
     type Info = ReturnType<typeof describe>[number];
     const A = figure(ai);
     const B = figure(bi);
-    const ia = describe(A);
-    const ib = describe(B);
+    const ia = describe(A).filter((s) => !A.strokes[s.idx].fade);
+    const ib = describe(B).filter((s) => !B.strokes[s.idx].fade);
 
     const out: Pair[] = [];
     const push = (a: Info, b: Info) => {
@@ -311,6 +315,28 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
       }
       ctx!.stroke();
     }
+
+    // Fine detail dissolves in place at the edges of the transition, on the
+    // same schedule as the prop canvases.
+    const fadeStrokes = (f: Figure, alpha: number) => {
+      if (alpha <= 0.01) return;
+      ctx!.globalAlpha = alpha;
+      for (const s of f.strokes) {
+        if (!s.fade) continue;
+        const sc = project(s, origin, bufA);
+        if (!sc) continue;
+        ctx!.lineWidth = Math.max(s.width * sc, 0.5);
+        ctx!.beginPath();
+        for (let i = 0; i < N; i++) {
+          if (i === 0) ctx!.moveTo(bufA[0], bufA[1]);
+          else ctx!.lineTo(bufA[i * 2], bufA[i * 2 + 1]);
+        }
+        ctx!.stroke();
+      }
+      ctx!.globalAlpha = 1;
+    };
+    fadeStrokes(A, 1 - clamp(t / 0.3, 0, 1));
+    fadeStrokes(B, clamp((t - 0.7) / 0.3, 0, 1));
   }
 
   return {

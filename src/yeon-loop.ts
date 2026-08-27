@@ -1,32 +1,24 @@
 import { ACCENT, WHITE, readAnchor, resizeCanvas, type Vec } from "./play";
-import { applyYeonPose, YEON_FRAMES, type YeonRig } from "./yeon-frames";
 import { drawKite, idleKiteTarget, steerKite, type KiteState } from "./yeon";
-
-const REST_POSE = YEON_FRAMES[0];
 
 export function startYeon(root: HTMLElement) {
   const stage = root.querySelector<HTMLElement>(".pictogram")!;
   const canvas = root.querySelector<HTMLCanvasElement>("canvas")!;
-  const anchorMark = root.querySelector<SVGCircleElement>("#reel-anchor")!;
+  const reelMark = root.querySelector<SVGCircleElement>("#reel-anchor")!;
+  const handMark = root.querySelector<SVGCircleElement>("#hand-anchor")!;
   const ctx = canvas.getContext("2d", { alpha: true });
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const rig: YeonRig = {
-    body: root.querySelector<SVGGElement>("#yeon-body")!,
-    head: root.querySelector<SVGGElement>("#yeon-head")!,
-    rightArm: root.querySelector<SVGGElement>("#yeon-right-arm")!,
-    legs: root.querySelector<SVGGElement>("#yeon-legs")!,
-    foot: root.querySelector<SVGGElement>("#yeon-foot")!,
-  };
-
   if (!ctx) {
-    applyYeonPose(rig, REST_POSE, 0);
     return { setVisible() {}, measure() {}, stop() {} };
   }
 
   const pointer: Vec = { x: 0, y: 0 };
   let size = { w: 0, h: 0, scale: 1 };
+  // The kite is tethered at the raised hand; the drawn line starts back at
+  // the reel held low in the other hand.
   let reel: Vec = { x: 0, y: 0 };
+  let reelPt: Vec = { x: 0, y: 0 };
   let hasPointer = false;
   let placed = false;
   let visible = false;
@@ -52,7 +44,8 @@ export function startYeon(root: HTMLElement) {
 
   function measure() {
     size = resizeCanvas(canvas, ctx, stage);
-    const next = readAnchor(stage, anchorMark);
+    const next = readAnchor(stage, handMark);
+    reelPt = readAnchor(stage, reelMark);
     const jump = Math.hypot(next.x - reel.x, next.y - reel.y);
     reel = next;
     kite.reel = reel;
@@ -74,7 +67,7 @@ export function startYeon(root: HTMLElement) {
   function paintKite() {
     ctx.clearRect(0, 0, size.w, size.h);
     if (!visible || size.w < 2 || size.h < 2) return;
-    drawKite(ctx, kite, WHITE, size.scale, ACCENT);
+    drawKite(ctx, kite, WHITE, size.scale, ACCENT, reelPt);
   }
 
   function frame(now: number) {
@@ -117,12 +110,10 @@ export function startYeon(root: HTMLElement) {
     import.meta.hot.dispose(stop);
   }
 
-  applyYeonPose(rig, REST_POSE, 0);
   measure();
 
   if (reduceMotion) {
     snapToIdle(0);
-    applyYeonPose(rig, REST_POSE, 0);
     paintKite();
     window.addEventListener("resize", () => {
       measure();
