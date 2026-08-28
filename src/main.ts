@@ -1,8 +1,12 @@
+import { inject } from "@vercel/analytics";
 import { startSangmo } from "./sangmo-loop";
 import { startYeon } from "./yeon-loop";
 import { startJegi } from "./jegi-loop";
 import { createMorph } from "./morph";
 import { createCursor } from "./cursor";
+
+// Initialize Vercel Web Analytics
+inject();
 const SCENES = [
   { id: "intro", bg: "#ffffff", ink: "dark" },
   { id: "sangmo", bg: "#ce2f3a", ink: "light" },
