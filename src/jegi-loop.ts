@@ -44,6 +44,7 @@ export function startJegi(root: HTMLElement) {
     applyJegiPose(rig, JEGI_FRAMES[4]);
     return { setVisible() {}, measure() {}, stop() {} };
   }
+  const context = ctx;
 
   const pointer: Vec = { x: 0, y: 0 };
   let size = { w: 0, h: 0, scale: 1 };
@@ -86,7 +87,7 @@ export function startJegi(root: HTMLElement) {
   function measure() {
     const prevW = size.w;
     const prevH = size.h;
-    size = resizeCanvas(canvas, ctx, stage);
+    size = resizeCanvas(canvas, context, stage);
     foot = readAnchor(stage, kickMark);
     if (size.w < 2 || size.h < 2) return;
     const resized = !placed || Math.abs(size.w - prevW) > 8 || Math.abs(size.h - prevH) > 8;
@@ -132,9 +133,9 @@ export function startJegi(root: HTMLElement) {
   }
 
   function paintJegi() {
-    ctx.clearRect(0, 0, size.w, size.h);
+    context.clearRect(0, 0, size.w, size.h);
     if (!visible || size.w < 2 || size.h < 2) return;
-    drawJegi(ctx, jegi, ACCENT_DEEP, size.scale);
+    drawJegi(context, jegi, ACCENT_DEEP, size.scale);
   }
 
   function frame(now: number) {
@@ -144,7 +145,7 @@ export function startJegi(root: HTMLElement) {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     if (!visible) {
-      ctx.clearRect(0, 0, size.w, size.h);
+      context.clearRect(0, 0, size.w, size.h);
       return;
     }
 

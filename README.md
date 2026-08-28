@@ -43,3 +43,6 @@ npm run dev
 ```
 
 Opens at [http://127.0.0.1:43123](http://127.0.0.1:43123).
+
+The site is built with Astro. The page shell is rendered statically, while
+the canvas-based folk-play interactions are bundled as client-side TypeScript.

@@ -28,6 +28,7 @@ export function startSangmo(root: HTMLElement) {
     applyPose(rig, FRAMES[2]);
     return { setVisible() {}, measure() {}, stop() {} };
   }
+  const context = ctx;
 
   const pointer: Vec = { x: 0, y: 0 };
   let size = { w: 0, h: 0, scale: 1 };
@@ -74,7 +75,7 @@ export function startSangmo(root: HTMLElement) {
       canvas.width = nextW;
       canvas.height = nextH;
     }
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
     size = {
       w: wCss,
       h: hCss,
@@ -122,9 +123,9 @@ export function startSangmo(root: HTMLElement) {
   }
 
   function paintRibbon() {
-    ctx.clearRect(0, 0, size.w, size.h);
+    context.clearRect(0, 0, size.w, size.h);
     if (size.w < 2 || size.h < 2 || state.radius < 1) return;
-    drawSangmo(ctx, state, ACCENT_SOFT, size.scale);
+    drawSangmo(context, state, ACCENT_SOFT, size.scale);
   }
 
   function frame(now: number) {
@@ -134,7 +135,7 @@ export function startSangmo(root: HTMLElement) {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     if (!visible) {
-      ctx.clearRect(0, 0, size.w, size.h);
+      context.clearRect(0, 0, size.w, size.h);
       return;
     }
 

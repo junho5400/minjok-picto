@@ -34,6 +34,16 @@ const ROLE: Record<string, string> = {
  *  figure together mid-flight; add a pair here only when proximity mismatches. */
 const CURATED: Record<string, [string, string][]> = {};
 
+/** Some source files group an arm inside the torso instead of giving it its
+ *  own SVG group. These semantic bridges preserve the limb without allowing
+ *  closed shapes such as heads to spill into unrelated body parts. */
+const ROLE_BRIDGES = new Set([
+  "larm|torso",
+  "torso|larm",
+  "rarm|torso",
+  "torso|rarm",
+]);
+
 type Stroke = {
   el: SVGGeometryElement;
   key: string;
@@ -53,7 +63,10 @@ type Figure = {
   strokes: Stroke[];
 };
 
-type Pair = { a: number; b: number; rev: boolean };
+type Pair =
+  | { kind: "morph"; a: number; b: number; rev: boolean }
+  | { kind: "fade-out"; a: number }
+  | { kind: "fade-in"; b: number };
 
 export type MorphState = { a: number; b: number; t: number } | null;
 
@@ -79,7 +92,6 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
   const pairCache = new Map<string, Pair[]>();
   const bufA = new Float32Array(N * 2);
   const bufB = new Float32Array(N * 2);
-  const bufM = new Float32Array(N * 2);
   let active: Exclude<MorphState, null> = { a: 0, b: 1, t: 0 };
   let on = false;
   let raf = 0;
@@ -106,7 +118,7 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
         key: `${gid}:${groupCounts[gid]++}`,
         role,
         width: parseFloat(getComputedStyle(el).strokeWidth) || 1,
-        fade: !!el.closest("g.fine"),
+        fade: el.dataset.morph === "fade" || !!el.closest("g.fine"),
         d: null,
         local: new Float32Array(0),
       });
@@ -181,7 +193,7 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
     const push = (a: Info, b: Info) => {
       const straight = Math.hypot(a.sx - b.sx, a.sy - b.sy) + Math.hypot(a.ex - b.ex, a.ey - b.ey);
       const crossed = Math.hypot(a.sx - b.ex, a.sy - b.ey) + Math.hypot(a.ex - b.sx, a.ey - b.sy);
-      out.push({ a: a.idx, b: b.idx, rev: crossed < straight });
+      out.push({ kind: "morph", a: a.idx, b: b.idx, rev: crossed < straight });
     };
 
     // The hand-curated pairs first: the major shapes carry over meaningfully.
@@ -198,32 +210,51 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
       push(a, b);
     }
 
-    // The rest match by proximity, preferring the same body part; whatever is
-    // left over merges into its closest counterpart.
-    const restA = ia.filter((s) => !usedA.has(s.idx));
-    const restB = ib.filter((s) => !usedB.has(s.idx));
-    const cands: { a: Info; b: Info; cost: number }[] = [];
-    for (const a of restA) {
-      for (const b of restB) {
-        const penalty = a.role === b.role ? 0 : 60;
-        cands.push({ a, b, cost: Math.hypot(a.cx - b.cx, a.cy - b.cy) + penalty });
+    type Candidate = { a: Info; b: Info; cost: number };
+    const match = (cands: Candidate[]) => {
+      cands.sort((p, q) => p.cost - q.cost);
+      for (const c of cands) {
+        if (usedA.has(c.a.idx) || usedB.has(c.b.idx)) continue;
+        usedA.add(c.a.idx);
+        usedB.add(c.b.idx);
+        push(c.a, c.b);
+      }
+    };
+
+    // First pass: reserve every possible one-to-one match within the same
+    // semantic body part. This prevents spare hat outlines from claiming a
+    // face or torso target.
+    const sameRole: Candidate[] = [];
+    for (const a of ia) {
+      for (const b of ib) {
+        if (a.role !== b.role) continue;
+        sameRole.push({ a, b, cost: Math.hypot(a.cx - b.cx, a.cy - b.cy) });
       }
     }
-    cands.sort((p, q) => p.cost - q.cost);
-    for (const c of cands) {
-      if (usedA.has(c.a.idx) || usedB.has(c.b.idx)) continue;
-      usedA.add(c.a.idx);
-      usedB.add(c.b.idx);
-      push(c.a, c.b);
+    match(sameRole);
+
+    // Second pass: bridge only known grouping differences. In the kite SVG,
+    // for example, the left arm lives inside `yeon-torso`; it should still
+    // travel as an arm, while unmatched head detail must simply dissolve.
+    const bridged: Candidate[] = [];
+    for (const a of ia) {
+      if (usedA.has(a.idx)) continue;
+      for (const b of ib) {
+        if (usedB.has(b.idx) || !ROLE_BRIDGES.has(`${a.role}|${b.role}`)) continue;
+        bridged.push({ a, b, cost: Math.hypot(a.cx - b.cx, a.cy - b.cy) });
+      }
     }
-    const nearest = (from: Info, list: Info[]) =>
-      list.reduce((best, cur) =>
-        Math.hypot(cur.cx - from.cx, cur.cy - from.cy) < Math.hypot(best.cx - from.cx, best.cy - from.cy)
-          ? cur
-          : best,
-      );
-    for (const a of ia) if (!usedA.has(a.idx)) push(a, nearest(a, ib));
-    for (const b of ib) if (!usedB.has(b.idx)) push(nearest(b, ia), b);
+    match(bridged);
+    // Never reuse a matched stroke for a leftover one. Reuse makes several
+    // source outlines converge on the same target outline (most visibly as
+    // stacked heads). Excess detail dissolves in place instead; newly needed
+    // detail appears only near the end of the transition.
+    for (const a of ia) {
+      if (!usedA.has(a.idx)) out.push({ kind: "fade-out", a: a.idx });
+    }
+    for (const b of ib) {
+      if (!usedB.has(b.idx)) out.push({ kind: "fade-in", b: b.idx });
+    }
     return out;
   }
 
@@ -279,6 +310,7 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
     const thin = 1 - 0.22 * Math.sin(Math.PI * tt);
 
     for (const pair of pairsFor(active.a, active.b)) {
+      if (pair.kind !== "morph") continue;
       const sa = A.strokes[pair.a];
       const sb = B.strokes[pair.b];
       const scaleA = project(sa, origin, bufA);
@@ -316,13 +348,13 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
       ctx!.stroke();
     }
 
-    // Fine detail dissolves in place at the edges of the transition, on the
-    // same schedule as the prop canvases.
-    const fadeStrokes = (f: Figure, alpha: number) => {
+    // Unmatched and fine-detail strokes dissolve at the edges rather than
+    // being forced into an already-used target path.
+    const drawFades = (f: Figure, strokes: Stroke[], alpha: number) => {
       if (alpha <= 0.01) return;
       ctx!.globalAlpha = alpha;
-      for (const s of f.strokes) {
-        if (!s.fade) continue;
+      ctx!.strokeStyle = `rgb(${f.ink[0]}, ${f.ink[1]}, ${f.ink[2]})`;
+      for (const s of strokes) {
         const sc = project(s, origin, bufA);
         if (!sc) continue;
         ctx!.lineWidth = Math.max(s.width * sc, 0.5);
@@ -335,8 +367,17 @@ export function createMorph(stage: HTMLElement, roots: HTMLElement[]) {
       }
       ctx!.globalAlpha = 1;
     };
-    fadeStrokes(A, 1 - clamp(t / 0.3, 0, 1));
-    fadeStrokes(B, clamp((t - 0.7) / 0.3, 0, 1));
+    const pairs = pairsFor(active.a, active.b);
+    const unmatchedA = pairs
+      .filter((pair): pair is Extract<Pair, { kind: "fade-out" }> => pair.kind === "fade-out")
+      .map((pair) => A.strokes[pair.a]);
+    const unmatchedB = pairs
+      .filter((pair): pair is Extract<Pair, { kind: "fade-in" }> => pair.kind === "fade-in")
+      .map((pair) => B.strokes[pair.b]);
+    const outAlpha = 1 - smooth(clamp(t / 0.3, 0, 1));
+    const inAlpha = smooth(clamp((t - 0.7) / 0.3, 0, 1));
+    drawFades(A, [...unmatchedA, ...A.strokes.filter((s) => s.fade)], outAlpha);
+    drawFades(B, [...unmatchedB, ...B.strokes.filter((s) => s.fade)], inAlpha);
   }
 
   return {

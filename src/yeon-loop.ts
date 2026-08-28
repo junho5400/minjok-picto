@@ -12,6 +12,7 @@ export function startYeon(root: HTMLElement) {
   if (!ctx) {
     return { setVisible() {}, measure() {}, stop() {} };
   }
+  const context = ctx;
 
   const pointer: Vec = { x: 0, y: 0 };
   let size = { w: 0, h: 0, scale: 1 };
@@ -43,7 +44,7 @@ export function startYeon(root: HTMLElement) {
   }
 
   function measure() {
-    size = resizeCanvas(canvas, ctx, stage);
+    size = resizeCanvas(canvas, context, stage);
     const next = readAnchor(stage, handMark);
     reelPt = readAnchor(stage, reelMark);
     const jump = Math.hypot(next.x - reel.x, next.y - reel.y);
@@ -65,9 +66,9 @@ export function startYeon(root: HTMLElement) {
   }
 
   function paintKite() {
-    ctx.clearRect(0, 0, size.w, size.h);
+    context.clearRect(0, 0, size.w, size.h);
     if (!visible || size.w < 2 || size.h < 2) return;
-    drawKite(ctx, kite, WHITE, size.scale, ACCENT, reelPt);
+    drawKite(context, kite, WHITE, size.scale, ACCENT, reelPt);
   }
 
   function frame(now: number) {
@@ -77,7 +78,7 @@ export function startYeon(root: HTMLElement) {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     if (!visible) {
-      ctx.clearRect(0, 0, size.w, size.h);
+      context.clearRect(0, 0, size.w, size.h);
       return;
     }
 
