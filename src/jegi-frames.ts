@@ -67,6 +67,21 @@ export const JEGI_FRAMES: JegiPose[] = [
 
 export const CONTACT_FRAMES = new Set([3, 4]);
 
+/** Shrink a swing frame toward the wind-up pose: 1 keeps the full drawn arc,
+ *  lower values lift the foot (and the hiked hem) proportionally less. */
+export function scaleJegiPose(pose: JegiPose, k: number): JegiPose {
+  const base = JEGI_FRAMES[0];
+  return {
+    bob: lerp(base.bob, pose.bob, k),
+    head: lerp(base.head, pose.head, k),
+    leftArm: lerp(base.leftArm, pose.leftArm, k),
+    rightArm: lerp(base.rightArm, pose.rightArm, k),
+    stand: lerp(base.stand, pose.stand, k),
+    kick: lerp(base.kick, pose.kick, k),
+    kickScale: lerp(base.kickScale, pose.kickScale, k),
+  };
+}
+
 export type JegiRig = {
   body: SVGGElement;
   head: SVGGElement;

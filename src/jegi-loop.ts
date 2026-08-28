@@ -1,16 +1,19 @@
 import { ACCENT_DEEP, readAnchor, resizeCanvas, type Vec } from "./play";
-import { applyJegiPose, JEGI_FRAMES, type JegiRig } from "./jegi-frames";
+import { applyJegiPose, JEGI_FRAMES, scaleJegiPose, type JegiRig } from "./jegi-frames";
 import {
   drawJegi,
   hoverJegi,
   jegiFallen,
   kickJegi,
+  kickPower,
   stepJegi,
   type JegiState,
 } from "./jegi";
 
 const KICK_SPEED = 12;
 const CONTACT_R = 26;
+/** Even the softest tap swings the leg partway; full power uses the whole drawn arc. */
+const SWING_MIN = 0.4;
 
 /** Obangsaek, one color per kick: five kicks complete a saekdong unit.
  *  White is the undyed sosaek tone so it reads on the white scene. */
@@ -49,6 +52,7 @@ export function startJegi(root: HTMLElement) {
   let playOrigin: Vec = { x: 0, y: 0 };
   let kicking = false;
   let kickPhase = 0;
+  let kickSwing = 1;
   let frameIndex = 0;
   let hasPointer = false;
   let engaged = false;
@@ -76,7 +80,7 @@ export function startJegi(root: HTMLElement) {
     playOrigin = readAnchor(stage, kickMark);
     applyJegiPose(rig, JEGI_FRAMES[4]);
     peak = readAnchor(stage, kickMark);
-    applyJegiPose(rig, JEGI_FRAMES[frameIndex]);
+    applyJegiPose(rig, scaleJegiPose(JEGI_FRAMES[frameIndex], kickSwing));
   }
 
   function measure() {
@@ -95,8 +99,15 @@ export function startJegi(root: HTMLElement) {
 
   let kicks = 0;
 
+  /** How far up the leg travels for this kick, from the same power as the launch. */
+  function swingFor(aim: Vec) {
+    return SWING_MIN + (1 - SWING_MIN) * kickPower(foot, aim);
+  }
+
   function strike() {
-    kickJegi(jegi, foot, hasPointer ? pointer : peak);
+    const aim = hasPointer ? pointer : peak;
+    kickSwing = swingFor(aim);
+    kickJegi(jegi, foot, aim);
     // Five bars make a unit, five units a row; a run past 100 keeps counting
     // but the record stops growing.
     if (tally && kicks < 100) {
@@ -117,6 +128,7 @@ export function startJegi(root: HTMLElement) {
     if (kicking) return;
     kicking = true;
     kickPhase = 0;
+    kickSwing = swingFor(hasPointer ? pointer : peak);
   }
 
   function paintJegi() {
@@ -154,7 +166,7 @@ export function startJegi(root: HTMLElement) {
     } else {
       frameIndex = 0;
     }
-    applyJegiPose(rig, JEGI_FRAMES[frameIndex]);
+    applyJegiPose(rig, scaleJegiPose(JEGI_FRAMES[frameIndex], kickSwing));
     foot = readAnchor(stage, kickMark);
 
     // Rebound only on real contact: the falling coin has to reach the resting

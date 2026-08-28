@@ -1,4 +1,4 @@
-import { clamp, type Vec } from "./play";
+import { clamp, lerp, type Vec } from "./play";
 
 export type JegiState = {
   pos: Vec;
@@ -45,10 +45,18 @@ export function stepJegi(s: JegiState, size: { w: number; h: number }, dt: numbe
   integrate(s, dt, size);
 }
 
+const KICK_VY_MIN = 560;
+const KICK_VY_MAX = 900;
+
+/** 0 = softest tap, 1 = full-strength kick, from how far above the foot `aim` sits. */
+export function kickPower(from: Vec, aim: Vec) {
+  return clamp(((from.y - aim.y) * 2.2 - KICK_VY_MIN) / (KICK_VY_MAX - KICK_VY_MIN), 0, 1);
+}
+
 /** Launch off the foot toward wherever `aim` sits at this instant. */
 export function kickJegi(s: JegiState, from: Vec, aim: Vec) {
   s.vel.x = clamp((aim.x - from.x) * 2.0, -380, 380);
-  s.vel.y = -clamp((from.y - aim.y) * 2.2, 560, 900);
+  s.vel.y = -lerp(KICK_VY_MIN, KICK_VY_MAX, kickPower(from, aim));
   s.spin = clamp(s.vel.x * 0.002, -0.4, 0.4);
 }
 
